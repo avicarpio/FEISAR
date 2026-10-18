@@ -907,7 +907,6 @@ body.holding .launchpad { pointer-events: none; }
 
 
 /* pull-to-advance: scrolling fills the meter and nudges the scene; a full meter changes scene */
-.scene.is-active > .wrap, .scene.is-active > .fleet__pin, .scene.is-active .eng__intro { translate: 0 calc(var(--pull, 0) * -38px); }
 .hint__body { display: flex; flex-direction: column; gap: 6px; }
 .hint__meter { display: block; height: 2px; width: 100%; min-width: 120px; background: var(--line-2); overflow: hidden; }
 .hint__meter b { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), var(--yellow)); transform: scaleX(0); transform-origin: left; }

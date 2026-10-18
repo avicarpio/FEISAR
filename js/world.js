@@ -457,7 +457,7 @@ addEventListener('pointermove', e => { mouse.x = e.clientX / innerWidth - .5; mo
 /* ---------------- ignition ---------------- */
 let igniteT = -1, igniteAt = 0;
 // the reveal plays once both the interface has opened and the craft is loaded, whichever comes last
-const ignite = () => { if (igniteT >= 0 || !shipReady) return; igniteT = 0; igniteAt = performance.now(); if (REDUCED) REVEAL.value = -1e3; };
+const ignite = () => { if (igniteT >= 0 || !shipReady) return; igniteT = 0; igniteAt = performance.now(); if (REDUCED) { REVEAL.value = -1e3; revealDone = true; } };
 addEventListener('feisar:ignite', ignite);
 
 /* ---------------- hero camera keys ---------------- */
@@ -474,6 +474,7 @@ const camNames = ['A-01', 'B-02', 'C-03', 'D-04'];
 
 /* ---------------- frame ---------------- */
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camUp = new THREE.Vector3(0, 1, 0);
+let idleT = 0, idleMix = 0, revealDone = false;
 let prevZoneFrames = 0, last = performance.now(), t = 0, vel = 0, prevZone = null, trackS = 0, trackSpeed = 0, flash = 0, warp = 0, lastKick = 0;
 const ST = window.FEISAR_STAGE || (window.FEISAR_STAGE = { zone: null, p: 0, boost: 0, drag: 0, kick: 0 });
 const pSm = {};
@@ -507,16 +508,29 @@ function frame(now) {
   mouse.sx = lerp(mouse.sx, mouse.x, .06); mouse.sy = lerp(mouse.sy, mouse.y, .06);
 
   // ignition reveal
-  if (igniteT >= 0 && REVEAL.value > -1e2) {
+  if (igniteT >= 0 && !revealDone) {
     igniteT = (now - igniteAt) / 1000;
     const k = smooth(.15, 2.9, igniteT);
     REVEAL.value = lerp(5.6, -3.9, k);
     scanGroup.visible = k > 0 && k < 1;
     scanGroup.position.z = REVEAL.value;
     if (igniteT < .25) flash = Math.max(flash, 1 - igniteT / .25);
-    if (k >= 1) { REVEAL.value = -1e3; scanGroup.visible = false; }
+    if (k >= 1) { REVEAL.value = -1e3; scanGroup.visible = false; revealDone = true; }
   }
   flash = Math.max(0, flash - dt * 2.2);
+
+  // launch scene at rest: the craft alternates between solid and holographic wireframe with the scan sweep;
+  // as soon as the cinematic starts (scroll / hold) it returns to solid and stays solid
+  if (revealDone && shipReady) {
+    const idle = ST.zone === 'hero' && ST.idle && !REDUCED;
+    idleT = idle ? idleT + dt : 0;
+    const c = idleT % 9, target = idle && c > 3.6 && c < 6.8 ? 1 : 0;
+    idleMix += clamp(target - idleMix, -dt / (idle ? 1.2 : .35), dt / 1.2);
+    if (idleMix > .001) {
+      REVEAL.value = lerp(-3.9, 5.6, idleMix);
+      scanGroup.visible = idleMix < .999; scanGroup.position.z = REVEAL.value;
+    } else if (REVEAL.value > -1e2) { REVEAL.value = -1e3; scanGroup.visible = false; idleMix = 0; }
+  }
 
   // the active zone comes from the scene controller
   const name = ST.zone;
