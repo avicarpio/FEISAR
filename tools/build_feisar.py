@@ -1,18 +1,10 @@
 """
-FEISAR FX350 (Wipeout HD) — fan-made recreation for Blender (v4).
+FEISAR — classic-style anti-gravity craft for Blender (v5, hard-surface).
 
-Traced from the official "WipEout HD Fury – Feisar Ship Elevations" sheets (PlayStation Blog
-Europe, 2009): side silhouette sampled from the HD side elevation, planform and wing layout
-from the HD top elevation.
-
-Layout (web axes: x right, y up, z forward, nose at +z, length 8.2):
-  * a slender forebody (nose wedge -> cockpit),
-  * two large swept delta wings rooted high on the rear hull, drooping back and out to
-    rounded tips,
-  * an exposed turbine stack in the channel between the wing roots, twin round exhausts.
-
-Exports assets/models/feisar_fx350.glb with named assemblies (hull, wing_R, turbines, ...).
-Materials "fsr_livery" (hull) and "fsr_wing" carry UVs for the livery painted by js/livery.js.
+Inspired by the classic FEISAR silhouette (long faceted wedge nose with a deck groove,
+angular canopy, rear engine block, yellow side pods, swept low wings and canted upper fins).
+Modelled from scratch in code; reference: vamsdal's "FEISAR" on Sketchfab (viewed only).
+tools/build_feisar_hd.py keeps the Wipeout HD FX350 recreation (v4).
 
 Run:  tools/blender-bwrap.sh -b --python tools/build_feisar.py
   or: flatpak run --filesystem=$PWD org.blender.Blender -b --python tools/build_feisar.py
@@ -77,6 +69,7 @@ def material(name, color, metal=0.0, rough=0.35, coat=0.0, emit=None, alpha=1.0,
 
 material("fsr_livery", "#ffffff", rough=0.3, coat=1.0)
 material("fsr_wing", "#ffffff", rough=0.3, coat=1.0)
+material("fsr_cheek", "#ffffff", rough=0.3, coat=1.0)
 material("fsr_white", "#e9edf2", rough=0.3, coat=1.0)
 material("fsr_teal", "#2a9fcb", rough=0.3, coat=1.0)
 material("fsr_yellow", "#f0c21b", rough=0.3, coat=1.0)
@@ -245,7 +238,42 @@ def tube(name, pts, r, mat, group=None):
     return ob
 
 
-# ================================================================ forebody hull
+
+# ================================================================ extra materials for the classic craft
+material("fsr_fin", "#ffffff", rough=0.3, coat=1.0)
+material("fsr_hazard", "#ffffff", rough=0.35, coat=0.6)
+
+
+def slab(name, pts, thick, mats, normal_hint=(0, 1, 0), bevel=0.008, uv=None, origin=None, group=None):
+    """Planar polygon extruded along its normal. mats = [faces, sides]. uv: per-point UVs for the big faces."""
+    P = [B(p) for p in pts]
+    nrm = (P[1] - P[0]).cross(P[2] - P[0]).normalized()
+    if nrm.dot(B(normal_hint)) < 0:
+        nrm = -nrm
+    o = B(origin) if origin else V3((0, 0, 0))
+    half = nrm * thick / 2
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new("UVMap")
+    top = [bm.verts.new(p + half - o) for p in P]
+    bot = [bm.verts.new(p - half - o) for p in P]
+    ft = bm.faces.new(top); ft.material_index = 0
+    fb = bm.faces.new(bot[::-1]); fb.material_index = 0
+    if uv:
+        for loop, t in zip(ft.loops, uv):
+            loop[uvl].uv = (t[0], 1 - t[1])
+        for loop, t in zip(fb.loops, uv[::-1]):
+            loop[uvl].uv = (t[0], 1 - t[1])
+    n = len(P)
+    for i in range(n):
+        j = (i + 1) % n
+        f = bm.faces.new((top[i], bot[i], bot[j], top[j])); f.material_index = 1 if len(mats) > 1 else 0
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    ob = finish(name, bm, mats, bevel=bevel, group=group, smooth_angle=0.3)
+    ob.location = o
+    return ob
+
+
+# ================================================================ hull (faceted wedge)
 L = 8.2
 ZN = 4.95
 
@@ -254,59 +282,50 @@ def zu(u):
     return ZN - u * L
 
 
-# u, bottom half-width, top half-width, bottom y, top y  (heights traced from the HD side elevation)
+# u, bottom half-width, deck half-width, bottom y, deck y, groove depth
 KEY = [
-    (0.000, 0.06, 0.04, 0.00, 0.07),
-    (0.012, 0.16, 0.10, -0.13, 0.17),
-    (0.030, 0.26, 0.17, -0.27, 0.26),
-    (0.060, 0.34, 0.22, -0.35, 0.33),
-    (0.120, 0.40, 0.26, -0.37, 0.39),
-    (0.200, 0.45, 0.29, -0.37, 0.47),
-    (0.300, 0.50, 0.32, -0.37, 0.59),
-    (0.400, 0.54, 0.34, -0.37, 0.69),
-    (0.500, 0.57, 0.35, -0.37, 0.76),
-    (0.600, 0.59, 0.36, -0.38, 0.84),
-    (0.700, 0.60, 0.34, -0.38, 0.88),
-    (0.800, 0.58, 0.32, -0.38, 0.86),
-    (0.880, 0.52, 0.30, -0.36, 0.72),
-    (0.905, 0.48, 0.28, -0.33, 0.62),
+    (0.000, 0.05, 0.03, -0.06, 0.02, 0.0),
+    (0.025, 0.17, 0.10, -0.26, 0.09, 0.02),
+    (0.060, 0.22, 0.14, -0.35, 0.14, 0.05),
+    (0.200, 0.30, 0.19, -0.36, 0.27, 0.06),
+    (0.350, 0.36, 0.23, -0.36, 0.41, 0.06),
+    (0.450, 0.41, 0.26, -0.36, 0.50, 0.04),
+    (0.500, 0.44, 0.28, -0.36, 0.54, 0.0),
+    (0.650, 0.48, 0.31, -0.36, 0.60, 0.0),
+    (0.800, 0.50, 0.32, -0.36, 0.62, 0.0),
+    (0.920, 0.49, 0.31, -0.35, 0.60, 0.0),
+    (1.000, 0.45, 0.29, -0.31, 0.54, 0.0),
 ]
-
-
-def cr(a, b, c, d, t):
-    return 0.5 * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (-a + 3 * b - 3 * c + d) * t * t * t)
-
-
 ST = []
-for i in range(len(KEY) - 1):
-    steps = 4 if i < 3 else 3
-    for k in range(steps):
-        t = k / steps
-        a, b, c, d = KEY[max(i - 1, 0)], KEY[i], KEY[i + 1], KEY[min(i + 2, len(KEY) - 1)]
-        ST.append(tuple(cr(a[m], b[m], c[m], d[m], t) for m in range(5)))
+for a, b in zip(KEY, KEY[1:]):
+    n = max(2, int((b[0] - a[0]) / 0.04))
+    for k in range(n):
+        t = k / n
+        ST.append(tuple(lerp(x, y, t) for x, y in zip(a, b)))
 ST.append(KEY[-1])
-U_END = KEY[-1][0]
-# profile (12 points, counter-clockwise from bottom-left); canonical V boundaries shared with js/livery.js
-# strips: bottom, lipR, lowerR, upperR, shoulderR, deckR, crown, deckL, shoulderL, upperL, lowerL, lipL
-VB = [0.0, 0.30, 0.34, 0.42, 0.50, 0.56, 0.61, 0.69, 0.74, 0.80, 0.88, 0.96, 1.0]
+
+# 14-point faceted profile; canonical V boundaries shared with js/livery.js
+STRIP_W = [0.20, 0.05, 0.10, 0.06, 0.04, 0.05, 0.02, 0.03, 0.02, 0.05, 0.04, 0.06, 0.10, 0.05]
+_tot = sum(STRIP_W)
+VB = [0.0]
+for w in STRIP_W:
+    VB.append(VB[-1] + w / _tot)
+print("VB", [round(v, 4) for v in VB])
 
 
-def ring(u, wb, wt, yb, yt):
+def ring(u, wb, wt, yb, yt, gd):
     z = zu(u)
     h = yt - yb
-    lip = min(0.05, wb * 0.15)
+    c1 = min(0.05, wb * 0.15)
+    g = min(0.07, wt * 0.35)
+    gd = min(gd, h * 0.2)
     return [
         (-wb, yb, z), (wb, yb, z),
-        (wb + lip, yb + h * 0.14, z),                     # lower lip
-        (wb + lip * 0.6, yb + h * 0.42, z),               # side belt line
-        (wt + (wb - wt) * 0.55, yb + h * 0.74, z),        # shoulder
-        (wt, yt - h * 0.02, z),                           # deck edge
-        (wt * 0.45, yt, z),                               # deck crown
-        (-wt * 0.45, yt, z),
-        (-wt, yt - h * 0.02, z),
-        (-(wt + (wb - wt) * 0.55), yb + h * 0.74, z),
-        (-(wb + lip * 0.6), yb + h * 0.42, z),
-        (-(wb + lip), yb + h * 0.14, z),
+        (wb + c1, yb + h * 0.22, z), (wb + c1, yb + h * 0.62, z),
+        (wt + (wb + c1 - wt) * 0.35, yt - h * 0.08, z), (wt, yt, z),
+        (g, yt, z), (g * 0.6, yt - gd, z), (-g * 0.6, yt - gd, z), (-g, yt, z),
+        (-wt, yt, z), (-(wt + (wb + c1 - wt) * 0.35), yt - h * 0.08, z),
+        (-(wb + c1), yb + h * 0.62, z), (-(wb + c1), yb + h * 0.22, z),
     ]
 
 
@@ -319,268 +338,165 @@ def hull_at(u):
 
 
 loft("hull", [ring(*s) for s in ST], lambda i, j: 0, ["fsr_livery", "fsr_teal", "fsr_carbon"],
-     cap_front=1, cap_back=2, uv_of=lambda i, j: (ST[i][0] / U_END, 1.0 - VB[j]), group="hull", smooth=0.36, bevel=0.012)
+     cap_front=1, cap_back=2, uv_of=lambda i, j: (ST[i][0], 1.0 - VB[j]), group="hull", smooth=0.2, bevel=0.012)
 
 
-def side_point(u, s, t=0.5):
-    """Point on the upper side panel (between belt line and shoulder) at fraction t, plus outward normal."""
-    wb, wt, yb, yt = hull_at(u)
+def side_frame(u, s, t=0.5):
+    wb, wt, yb, yt, gd = hull_at(u)
     h = yt - yb
-    lip = min(0.05, wb * 0.15)
-    p0 = V3((wb + lip * 0.6, yb + h * 0.42))
-    p1 = V3((wt + (wb - wt) * 0.55, yb + h * 0.74))
-    c = p0.lerp(p1, t)
-    d = (p1 - p0).normalized()
-    n = V3((d.y, -d.x))
-    if n.x < 0:
-        n = -n
-    return (s * c.x, c.y, zu(u)), (s * n.x, n.y, 0.0)
+    c1 = min(0.05, wb * 0.15)
+    return (s * (wb + c1), yb + h * (0.22 + 0.4 * t), zu(u)), V3((s, 0, 0))
 
 
-# long dark side slot and lower panel recess (as in the elevation)
+# side detail: long intake slot, vents, ladder
 for s in (1, -1):
     tag = "R" if s > 0 else "L"
-    for (ua, ub, t, hgt, mat) in ((0.19, 0.33, 0.62, 0.07, "fsr_carbon"),):
-        pa, na = side_point(ua, s, t)
-        pb, nb = side_point(ub, s, t)
-        c = lerp3(pa, pb, 0.5)
-        n = V3(na).normalized()
-        ax = n
-        az = V3(pa) - V3(pb)
-        az.normalize()
-        ay = az.cross(ax).normalized()
-        box(f"slot_{tag}_{ua}", (c[0] - n.x * 0.004, c[1], c[2]), (0.02, hgt, (V3(pa) - V3(pb)).length), mat, basis=(ax, ay, az), bevel=0.0, group="hull")
-    # boarding ladder panel (dark recess with rungs, below the canopy)
-    pa, na = side_point(0.50, s, 0.3)
-    n = V3(na).normalized()
-    up = V3((0, 1, 0))
-    box(f"ladder_{tag}", (pa[0] + n.x * 0.002, pa[1] + 0.05, pa[2]), (0.012, 0.32, 0.12), "fsr_carbon", basis=(n, up, V3((0, 0, 1))), bevel=0.0, group="hull")
-    for k in range(5):
-        box(f"rung_{tag}_{k}", (pa[0] + n.x * 0.012, pa[1] - 0.08 + k * 0.065, pa[2]), (0.014, 0.014, 0.1), "fsr_metal", basis=(n, up, V3((0, 0, 1))), bevel=0.0, group="hull")
-    # nose chin intake
-box("nose_intake", (0, 0.02, zu(0.035)), (0.22, 0.05, 0.12), "fsr_carbon", rot=(math.radians(-35), 0, 0), bevel=0.0, group="hull")
+    pa, n = side_frame(0.12, s, 0.75)
+    pb, _ = side_frame(0.36, s, 0.75)
+    c = lerp3(pa, pb, 0.5)
+    box(f"slot_{tag}", (c[0] + s * 0.002, c[1], c[2]), (0.02, 0.07, abs(pa[2] - pb[2])), "fsr_carbon", bevel=0.0, group="hull")
+    for k in range(6):
+        p, _ = side_frame(0.56 + k * 0.012, s, 0.35)
+        box(f"side_vent_{tag}_{k}", (p[0] + s * 0.004, p[1], p[2]), (0.02, 0.16, 0.04), "fsr_carbon", bevel=0.0, group="hull")
+    for k in range(4):
+        p, _ = side_frame(0.475, s, 0.15 + k * 0.2)
+        box(f"rung_{tag}_{k}", (p[0] + s * 0.012, p[1], p[2]), (0.018, 0.016, 0.1), "fsr_metal", bevel=0.0, group="hull")
+box("nose_sensor", (0, -0.03, zu(0.004)), (0.06, 0.03, 0.01), "fsr_screen", bevel=0.0, group="hull")
+# groove inserts: dark channel along the nose deck with a slim light strip
+for k, (u0, u1) in enumerate(((0.06, 0.2), (0.2, 0.35), (0.35, 0.44))):
+    wb, wt, yb, yt, gd = hull_at((u0 + u1) / 2)
+    box(f"groove_strip_{k}", (0, yt - gd + 0.006, zu((u0 + u1) / 2)), (0.03, 0.006, (u1 - u0) * L * 0.9), "fsr_field", bevel=0.0, group="hull")
 
-# ================================================================ canopy + head fairing
-def canopy_ring(u, w_base, y_base, w_top, y_top):
-    z = zu(u)
-    return [(w_base, y_base, z), (w_top, y_top, z), (-w_top, y_top, z), (-w_base, y_base, z)]
-
-
+# ================================================================ canopy
 CAN = [  # u, base half-width, base y, top half-width, top y
-    (0.405, 0.32, 0.685, 0.30, 0.70),
-    (0.44, 0.33, 0.715, 0.25, 0.87),
-    (0.49, 0.34, 0.75, 0.23, 0.97),
-    (0.55, 0.35, 0.795, 0.23, 1.02),
-    (0.605, 0.355, 0.845, 0.24, 1.04),
+    (0.47, 0.27, 0.515, 0.25, 0.53),
+    (0.52, 0.28, 0.555, 0.17, 0.82),
+    (0.58, 0.29, 0.575, 0.18, 0.92),
+    (0.66, 0.30, 0.6, 0.19, 0.93),
+    (0.715, 0.305, 0.61, 0.2, 0.86),
 ]
-loft("canopy_glass", [canopy_ring(*c) for c in CAN], lambda i, j: 0, ["fsr_glass"], group="canopy_glass", smooth=0.35)
-for k, c in enumerate(CAN[1:], 1):
-    z = zu(c[0])
-    tube(f"canopy_hoop_{k}", [(c[1] + 0.01, c[2], z), (c[3] + 0.01, c[4] + 0.01, z), (-c[3] - 0.01, c[4] + 0.01, z), (-c[1] - 0.01, c[2], z)], 0.011, "fsr_carbon", group="canopy_frame")
-for sx in (1, -1):
-    tube(f"canopy_rail_top_{sx}", [(sx * (c[3] + 0.012), c[4] + 0.012, zu(c[0])) for c in CAN], 0.016, "fsr_carbon", group="canopy_frame")
-    tube(f"canopy_rail_base_{sx}", [(sx * (c[1] + 0.015), c[2] + 0.01, zu(c[0])) for c in CAN], 0.022, "fsr_dark", group="canopy_frame")
-tube("canopy_spine", [(0, c[4] + 0.014, zu(c[0])) for c in CAN[1:]], 0.012, "fsr_carbon", group="canopy_frame")
 
-# head fairing behind the canopy (white hump with the antenna)
-loft("fairing", [
-    [(0.33, 0.84, zu(0.60)), (0.22, 1.04, zu(0.60)), (-0.22, 1.04, zu(0.60)), (-0.33, 0.84, zu(0.60))],
-    [(0.30, 0.87, zu(0.64)), (0.2, 1.08, zu(0.64)), (-0.2, 1.08, zu(0.64)), (-0.30, 0.87, zu(0.64))],
-    [(0.27, 0.88, zu(0.70)), (0.16, 1.02, zu(0.70)), (-0.16, 1.02, zu(0.70)), (-0.27, 0.88, zu(0.70))],
-    [(0.24, 0.87, zu(0.74)), (0.1, 0.93, zu(0.74)), (-0.1, 0.93, zu(0.74)), (-0.24, 0.87, zu(0.74))],
-], lambda i, j: 1 if j == 1 else 0, ["fsr_white", "fsr_teal"], cap_front=0, cap_back=0, group="fairing", bevel=0.01)
-cylinder("antenna", (0.06, 1.24, zu(0.67)), 0.012, 0.32, "fsr_metal", r2=0.004, verts=8, axis="y", group="antenna")
-sphere("antenna_tip", (0.06, 1.4, zu(0.67)), 0.016, (1, 1, 1), "fsr_light_red", group="antenna")
-sphere("sensor", (0, 1.07, zu(0.625)), 0.05, (1, 0.6, 1.2), "fsr_visor", group="fairing")
+
+def can_ring(u, wbs, yb, wts, yt):
+    z = zu(u)
+    return [(wbs, yb, z), (wts + (wbs - wts) * 0.45, yb + (yt - yb) * 0.75, z), (wts, yt, z), (-wts, yt, z), (-(wts + (wbs - wts) * 0.45), yb + (yt - yb) * 0.75, z), (-wbs, yb, z)]
+
+
+loft("canopy_glass", [can_ring(*c) for c in CAN], lambda i, j: 0, ["fsr_glass"], group="canopy_glass", smooth=0.2, closed=False)
+fr = []
+for c in CAN:
+    fr.append(can_ring(*c))
+for k, r in enumerate(fr[1:], 1):
+    tube(f"hoop_{k}", [(p[0] * 1.03, p[1] + 0.01, p[2]) for p in r], 0.012, "fsr_carbon", group="canopy_frame")
+for j in range(6):
+    tube(f"rail_{j}", [(r[j][0] * 1.03, r[j][1] + 0.01, r[j][2]) for r in fr], 0.012 if j not in (0, 5) else 0.02, "fsr_carbon", group="canopy_frame")
 
 # interior
-box("dash", (0, 0.76, zu(0.445)), (0.42, 0.08, 0.26), "fsr_carbon", rot=(math.radians(18), 0, 0), group="cockpit")
-for x in (-0.1, 0.1):
-    box(f"screen_{x}", (x, 0.8, zu(0.452)), (0.14, 0.07, 0.008), "fsr_screen", rot=(math.radians(-55), 0, 0), bevel=0.0, group="cockpit")
-box("seat", (0, 0.86, zu(0.565)), (0.34, 0.34, 0.06), "fsr_carbon", rot=(math.radians(-16), 0, 0), group="cockpit")
-sphere("pilot_torso", (0, 0.82, zu(0.545)), 0.14, (1.25, 1.1, 0.85), "fsr_suit", group="cockpit")
-sphere("pilot_helmet", (0, 0.97, zu(0.535)), 0.11, (1.0, 1.12, 1.05), "fsr_helmet", group="cockpit")
-sphere("pilot_visor", (0, 0.975, zu(0.523)), 0.078, (1.25, 0.5, 0.55), "fsr_visor", group="cockpit")
+box("dash", (0, 0.58, zu(0.51)), (0.36, 0.07, 0.22), "fsr_carbon", rot=(math.radians(15), 0, 0), group="cockpit")
+for x in (-0.09, 0.09):
+    box(f"screen_{x}", (x, 0.62, zu(0.516)), (0.12, 0.06, 0.008), "fsr_screen", rot=(math.radians(-55), 0, 0), bevel=0.0, group="cockpit")
+box("seat", (0, 0.72, zu(0.645)), (0.3, 0.32, 0.06), "fsr_carbon", rot=(math.radians(-18), 0, 0), group="cockpit")
+sphere("pilot_torso", (0, 0.68, zu(0.625)), 0.13, (1.25, 1.1, 0.85), "fsr_suit", group="cockpit")
+sphere("pilot_helmet", (0, 0.82, zu(0.615)), 0.1, (1.0, 1.12, 1.05), "fsr_helmet", group="cockpit")
+sphere("pilot_visor", (0, 0.825, zu(0.604)), 0.07, (1.25, 0.5, 0.55), "fsr_visor", group="cockpit")
+
+# ================================================================ rear engine block
+g = "engine"
+zr = zu(1.0)
+loft("engine_block", [
+    [(0.24, 0.6, zu(0.72)), (0.2, 0.8, zu(0.72)), (-0.2, 0.8, zu(0.72)), (-0.24, 0.6, zu(0.72))],
+    [(0.26, 0.6, zu(0.76)), (0.22, 0.86, zu(0.76)), (-0.22, 0.86, zu(0.76)), (-0.26, 0.6, zu(0.76))],
+    [(0.26, 0.58, zu(0.96)), (0.22, 0.84, zu(0.96)), (-0.22, 0.84, zu(0.96)), (-0.26, 0.58, zu(0.96))],
+    [(0.24, 0.52, zu(1.0)), (0.2, 0.74, zu(1.0)), (-0.2, 0.74, zu(1.0)), (-0.24, 0.52, zu(1.0))],
+], lambda i, j: 0, ["fsr_carbon"], cap_front=0, cap_back=0, group=g, bevel=0.01, smooth=0.3)
+# warning plate (hazard texture) on the slanted rear-top of the block
+slab("warning_plate", [(0.15, 0.865, zu(0.80)), (0.15, 0.85, zu(0.93)), (-0.15, 0.85, zu(0.93)), (-0.15, 0.865, zu(0.80))], 0.012,
+     ["fsr_hazard", "fsr_dark"], uv=[(0.5, 0), (0.5, 1), (0, 1), (0, 0)], group=g)
+for k in range(5):
+    box(f"block_rib_{k}", (0, 0.87, zu(0.735) - k * 0.03), (0.4, 0.012, 0.012), "fsr_gunmetal", bevel=0.0, group=g)
 for sx in (1, -1):
-    tube(f"arm_{sx}", [(sx * 0.15, 0.86, zu(0.54)), (sx * 0.16, 0.8, zu(0.5)), (sx * 0.09, 0.79, zu(0.465))], 0.032, "fsr_suit", group="cockpit")
+    cylinder(f"block_pipe_{sx}", (sx * 0.25, 0.74, zu(0.86)), 0.04, (zu(0.74) - zu(0.98)), "fsr_metal", group=g)
 
-# ================================================================ delta wings
-# span parameter s: 0 at the root (on top of the rear hull) -> 1 at the rounded tip
-NS, NQ = 26, 20
+# yellow grilles behind the canopy
+for sx in (1, -1):
+    tag = "R" if sx > 0 else "L"
+    box(f"grille_frame_{tag}", (sx * 0.33, 0.64, zu(0.745)), (0.16, 0.06, 0.36), "fsr_yellow", group=f"grille_{tag}", bevel=0.008)
+    for k in range(8):
+        box(f"grille_slat_{tag}_{k}", (sx * 0.33, 0.675, zu(0.73) - k * 0.035 + 0.06), (0.13, 0.02, 0.012), "fsr_dark", bevel=0.0, group=f"grille_{tag}")
 
-
-def wing_frame(s):
-    """Leading / trailing edge points of the right wing at span fraction s (traced from the side elevation:
-    root along the top of the rear hull, tip edge low along u .58-.93, rearmost point ~60 % span)."""
-    x = 0.28 + 2.0 * s
-    y = 0.97 - 1.62 * s - 0.1 * math.sin(math.pi * s)
-    le_u = 0.56 + 0.12 * s
-    te_u = 0.80 + 0.20 * (s / 0.6) ** 0.7 if s <= 0.6 else 1.0 - 0.07 * ((s - 0.6) / 0.4) ** 2
-    le = V3((x, y + 0.03, zu(le_u)))
-    te = V3((x - 0.08 * s, y - 0.05 * s, zu(te_u)))
-    if s > 0.74:  # rounded tip
-        f = math.sqrt(max(0.0, 1 - ((s - 0.74) / 0.26) ** 2))
-        mid = le.lerp(te, 0.55)
-        k = 0.4 + 0.6 * f
-        le = mid + (le - mid) * k
-        te = mid + (te - mid) * k
-    return le, te
-
-
-def wing_surface(s, q, side, sgn=1):
-    """Point on the right wing (sgn flips to the left one). side=+1 top, -1 bottom."""
-    le, te = wing_frame(s)
-    le2, te2 = wing_frame(min(1, s + 0.02))
-    chord = te - le
-    span = (le2.lerp(te2, 0.5) - le.lerp(te, 0.5))
-    if span.length < 1e-6:
-        span = V3((1, -0.4, 0))
-    n = span.cross(chord).normalized()
-    if n.y < 0:
-        n = -n
-    t = 0.34 * (1 - s) ** 1.2 + 0.12
-    th = t * 1.25 * math.sqrt(max(q, 0)) * (1 - q) ** 0.7
-    p = le + chord * q + n * (side * th * (0.55 if side > 0 else 0.45))
-    return V3((p.x * sgn, p.y, p.z)), V3((n.x * sgn, n.y, n.z))
-
-
-Q = [0.5 - 0.5 * math.cos(math.pi * i / (NQ - 1)) for i in range(NQ)]
-SS = [i / (NS - 1) for i in range(NS)]
-for sgn in (1, -1):
-    tag = "R" if sgn > 0 else "L"
+# ================================================================ side pods
+for sx in (1, -1):
+    tag = "R" if sx > 0 else "L"
+    g = f"pod_{tag}"
     rings = []
-    for s in SS:
-        top = [wing_surface(s, q, 1, sgn)[0] for q in Q]
-        bot = [wing_surface(s, q, -1, sgn)[0] for q in Q[::-1][1:-1]]
-        rings.append([tuple(p) for p in top + bot])
-    nq = len(rings[0])
+    for u, xo, xi, yt_, yb_ in ((0.6, 0.5, 0.48, 0.1, 0.0), (0.66, 0.66, 0.48, 0.42, -0.12), (0.9, 0.68, 0.48, 0.44, -0.14), (0.99, 0.64, 0.46, 0.38, -0.1)):
+        z = zu(u)
+        rings.append([(sx * xi, yt_, z), (sx * (xo - 0.05), yt_, z), (sx * xo, yt_ - 0.08, z), (sx * xo, yb_ + 0.06, z), (sx * (xo - 0.06), yb_, z), (sx * xi, yb_, z)])
+    loft(f"pod_shell_{tag}", rings, lambda i, j: 0, ["fsr_yellow"], cap_front=0, cap_back=0, group=g, bevel=0.01, smooth=0.3)
+    # emblem plate + intake
+    p = (sx * 0.682, 0.16, zu(0.8))
+    slab(f"pod_plate_{tag}", [(sx * 0.683, 0.32, zu(0.72)), (sx * 0.683, 0.32, zu(0.88)), (sx * 0.683, 0.0, zu(0.88)), (sx * 0.683, 0.0, zu(0.72))], 0.01,
+         ["fsr_fin", "fsr_dark"], normal_hint=(sx, 0, 0), uv=[(0.5, 0.0), (1.0, 0.0), (1.0, 0.5), (0.5, 0.5)], group=g)
+    box(f"pod_intake_{tag}", (sx * 0.57, 0.15, zu(0.655)), (0.16, 0.3, 0.04), "fsr_carbon", group=g, bevel=0.006)
+    box(f"pod_nozzle_{tag}", (sx * 0.57, 0.15, zu(1.0) - 0.03), (0.17, 0.28, 0.08), "fsr_gunmetal", group=g, bevel=0.006)
+    box(f"pod_glow_{tag}", (sx * 0.57, 0.15, zu(1.0) - 0.075), (0.13, 0.22, 0.01), "fsr_engine", group=g, bevel=0.0)
 
-    def uv(i, j, nq=nq):
-        jj = j % nq
-        qq = Q[jj] if jj < NQ else Q[::-1][1:-1][jj - NQ]
-        top = jj < NQ
-        return ((qq * 0.5) if top else (1 - qq * 0.5), 1.0 - SS[i])
-
-    loft(f"wing_{tag}", rings, lambda i, j: 0, ["fsr_wing", "fsr_teal"], cap_front=1, cap_back=1, uv_of=uv, group=f"wing_{tag}", smooth=0.9)
-
-    # leading-edge armour strip
-    tube(f"wing_le_{tag}", [tuple(wing_surface(s0, 0.004, 1, sgn)[0]) for s0 in [0.04 + k * 0.045 for k in range(20)]], 0.022, "fsr_gunmetal", group=f"wing_{tag}")
-    # root fillet: closes the gap between the wing underside and the hull flank
-    fil = []
-    for q in (0.02, 0.2, 0.4, 0.6, 0.8, 0.98):
-        p_root, _ = wing_surface(0.0, q, -1, sgn)
-        z = p_root.z
-        u = (ZN - z) / L
-        wb, wt, yb, yt = hull_at(min(u, U_END))
-        fil.append([tuple(p_root), (sgn * (wt + (wb - wt) * 0.55), yb + (yt - yb) * 0.74, z), (sgn * (wb + 0.02), yb + (yt - yb) * 0.42, z)])
-    loft(f"wing_fillet_{tag}", fil, lambda i, j: 0, ["fsr_teal"], closed=False, group=f"wing_{tag}", smooth=0.8)
-
-    # cooling grille: recessed dark panel with slats on the inner wing (top view)
-    for s0 in (0.1,):
-        p_a, n_a = wing_surface(s0, 0.28, 1, sgn)
-        p_b, _ = wing_surface(s0 + 0.24, 0.28, 1, sgn)
-        p_c, _ = wing_surface(s0, 0.72, 1, sgn)
-        ax = (p_c - p_a).normalized()
-        az = (p_b - p_a).normalized()
-        ay = n_a
-        centre = (p_a + p_b + p_c + (p_b + p_c - p_a)) / 4 + n_a * 0.005
-        w = (p_c - p_a).length
-        h = (p_b - p_a).length
-        box(f"grille_well_{tag}", tuple(centre), (w, 0.012, h), "fsr_carbon", basis=(ax, ay, az), bevel=0.0, group=f"grille_{tag}")
-        for k in range(15):
-            t = (k + 0.5) / 15
-            pc = p_a + (p_c - p_a) * t + (p_b - p_a) * 0.5 + n_a * 0.016
-            box(f"grille_slat_{tag}_{k}", tuple(pc), (0.012, 0.03, h * 0.92), "fsr_gunmetal", basis=(ax, ay, az), bevel=0.0, group=f"grille_{tag}")
-        # surround frame
-        for d, (cx, cz, sx, sz) in enumerate(((0, -0.5, 1.04, 0.04), (0, 0.5, 1.04, 0.04), (-0.5, 0, 0.04, 1.0), (0.5, 0, 0.04, 1.0))):
-            q = centre + ax * (cx * w) + az * (cz * h) + n_a * 0.012
-            box(f"grille_rim_{tag}_{d}", tuple(q), (max(sx * w, 0.03), 0.02, max(sz * h, 0.03)), "fsr_gunmetal", basis=(ax, ay, az), bevel=0.004, group=f"grille_{tag}")
-
-    # trailing-edge thrusters (dark blocks with glowing nozzles, seen in the top elevation)
-    for k, s0 in enumerate((0.3, 0.42)):
-        p, n = wing_surface(s0, 0.93, -1, sgn)
-        le, te = wing_frame(s0)
-        fwd = (le - te).normalized()
-        fwd = V3((fwd.x * sgn, fwd.y, fwd.z))
-        side = n.cross(fwd).normalized()
-        c = p - n * 0.05
-        box(f"thruster_{tag}{k}", tuple(c), (0.16, 0.12, 0.34), "fsr_carbon", basis=(side, n, fwd), group=f"thrusters_{tag}", bevel=0.012)
-        e = c - fwd * 0.175
-        box(f"thruster_glow_{tag}{k}", tuple(e), (0.11, 0.07, 0.01), "fsr_engine", basis=(side, n, fwd), group=f"thrusters_{tag}", bevel=0.0)
-
-    # airbrake flap at the trailing edge, hinged along its leading edge
-    sa, sb, qh = 0.56, 0.8, 0.8
-    ha, n1 = wing_surface(sa, qh, 1, sgn)
-    hb, n2 = wing_surface(sb, qh, 1, sgn)
-    ta, _ = wing_surface(sa, 0.99, 1, sgn)
-    tb, _ = wing_surface(sb, 0.99, 1, sgn)
-    hinge = (ha + hb) / 2
-    ax = (hb - ha).normalized()
-    ay = ((n1 + n2) / 2).normalized()
-    az = ax.cross(ay).normalized()
-    if az.dot(ta - ha) > 0:
-        az = -az
-    basis = mu.Matrix((B(ax).normalized(), -B(az).normalized(), B(ay).normalized())).transposed()
-    inv = basis.inverted()
-    bm = bmesh.new()
-    pts = [ha, hb, tb, ta]
-    top = [bm.verts.new(inv @ (B(p + ay * 0.012) - B(hinge))) for p in pts]
-    bot = [bm.verts.new(inv @ (B(p - ay * 0.012) - B(hinge))) for p in pts]
-    bm.faces.new(top); bm.faces.new(bot[::-1])
-    for i in range(4):
-        j = (i + 1) % 4
-        f = bm.faces.new((top[i], bot[i], bot[j], top[j])); f.material_index = 1
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    flap = finish(f"airbrake_{tag}", bm, ["fsr_yellow", "fsr_dark"], group=f"airbrake_{tag}", bevel=0.006)
-    flap.matrix_world = mu.Matrix.Translation(B(hinge)) @ basis.to_4x4()
-
-    # wingtip skid + nav light
-    p, n = wing_surface(0.97, 0.55, -1, sgn)
-    box(f"tip_skid_{tag}", tuple(p - n * 0.02), (0.06, 0.04, 0.5), "fsr_gunmetal", group=f"wing_{tag}")
-    p, n = wing_surface(0.995, 0.5, 1, sgn)
-    sphere(f"nav_{tag}", tuple(p + V3((sgn * 0.03, 0, 0))), 0.03, (1, 1, 1), "fsr_light_green" if sgn > 0 else "fsr_light_red", group=f"wing_{tag}")
-
-# ================================================================ turbine stack in the central channel
-g = "turbines"
-box("channel_floor", (0, 0.84, zu(0.81)), (0.5, 0.05, zu(0.73) - zu(0.9)), "fsr_carbon", group=g)
+# ================================================================ main exhaust
+g = "exhausts"
+box("exhaust_frame", (0, 0.12, zr - 0.04), (0.5, 0.44, 0.1), "fsr_carbon", group=g, bevel=0.01)
+box("exhaust_bezel", (0, 0.12, zr - 0.07), (0.46, 0.4, 0.04), "fsr_metal", group=g, bevel=0.008)
+for k in range(4):
+    box(f"exhaust_heat_rib_{k}", (0, 0.36 + k * 0.035, zr - 0.02), (0.44, 0.012, 0.06), "fsr_gunmetal", group=g, bevel=0.0)
 for sx in (1, -1):
-    z0, z1 = zu(0.735), zu(0.86)
-    cylinder(f"turbine_{sx}", (sx * 0.13, 0.92, (z0 + z1) / 2), 0.1, z0 - z1, "fsr_steel", group=g, bevel=0.004)
-    for k in range(7):
-        torus(f"turbine_rib_{sx}_{k}", (sx * 0.13, 0.92, z0 - 0.08 - k * (z0 - z1 - 0.16) / 6), 0.103, 0.012, "fsr_gunmetal", group=g)
-    cylinder(f"turbine_cap_{sx}", (sx * 0.13, 0.92, z0 + 0.02), 0.07, 0.04, "fsr_metal", r2=0.06, group=g)
-box("turbine_spine", (0, 0.99, zu(0.8)), (0.05, 0.04, zu(0.735) - zu(0.86)), "fsr_dark", group=g)
-# rear grille block
-box("rear_grille", (0, 0.86, zu(0.9)), (0.44, 0.26, 0.08), "fsr_dark", group=g)
-for k in range(6):
-    box(f"rear_grille_slat_{k}", (0, 0.76 + k * 0.04, zu(0.9) - 0.045), (0.46, 0.012, 0.03), "fsr_metal", bevel=0.0, group=g)
+    for sy in (1, -1):
+        cylinder(f"rcs_{sx}_{sy}", (sx * 0.2, 0.12 + sy * 0.16, zr - 0.09), 0.02, 0.05, "fsr_metal", r2=0.03, verts=12, group=g)
+    box(f"rear_vent_{sx}", (sx * 0.32, 0.3, zr - 0.01), (0.08, 0.3, 0.02), "fsr_dark", group=g, bevel=0.0)
+    for k in range(5):
+        box(f"rear_vent_slat_{sx}_{k}", (sx * 0.32, 0.18 + k * 0.06, zr - 0.025), (0.08, 0.012, 0.012), "fsr_metal", group=g, bevel=0.0)
+box("exhaust_core", (0, 0.12, zr - 0.095), (0.42, 0.36, 0.01), "fsr_engine", group=g, bevel=0.0)
+for k, x in enumerate((-0.14, 0, 0.14)):
+    box(f"exhaust_vane_{k}", (x, 0.12, zr - 0.1), (0.018, 0.36, 0.03), "fsr_dark", group=g, bevel=0.0)
 for sx in (1, -1):
-    tube(f"feed_pipe_{sx}", [(sx * 0.13, 0.84, zu(0.86)), (sx * 0.2, 0.55, zu(0.905)), (sx * 0.24, 0.3, zu(0.91))], 0.035, "fsr_metal", group=g)
+    box(f"tail_light_{sx}", (sx * 0.2, 0.66, zr - 0.01), (0.08, 0.02, 0.01), "fsr_light_red", group=g, bevel=0.0)
 
-# ================================================================ twin exhausts
-g = "engines"
-zr = zu(U_END)
-box("engine_mount", (0, 0.08, zr - 0.05), (0.86, 0.46, 0.12), "fsr_carbon", group=g)
-for sx in (1, -1):
-    c = (sx * 0.24, 0.08, zr - 0.2)
-    cylinder(f"exhaust_{sx}", c, 0.19, 0.34, "fsr_steel", r2=0.17, group=g, bevel=0.004, cap=False)
-    torus(f"exhaust_lip_{sx}", (c[0], c[1], zr - 0.37), 0.172, 0.018, "fsr_metal", group=g)
-    torus(f"exhaust_band_{sx}", (c[0], c[1], zr - 0.1), 0.193, 0.016, "fsr_yellow", group=g)
-    cylinder(f"exhaust_cone_{sx}", (c[0], c[1], zr - 0.28), 0.1, 0.16, "fsr_gunmetal", r2=0.03, group=g)
-    cylinder(f"exhaust_core_{sx}", (c[0], c[1], zr - 0.2), 0.165, 0.01, "fsr_engine", group=g)
-    for k in range(12):
-        a = k / 12 * TAU
-        box(f"exhaust_blade_{sx}_{k}", (c[0] + math.cos(a) * 0.12, c[1] + math.sin(a) * 0.12, zr - 0.21), (0.09, 0.008, 0.02), "fsr_gunmetal", rot=(0, 0.3, a), bevel=0.0, group=g)
-for sx in (1, -1):
-    box(f"tail_light_{sx}", (sx * 0.4, 0.28, zr - 0.12), (0.08, 0.02, 0.01), "fsr_light_white", bevel=0.0, group=g)
+# ================================================================ wings (swept, low on the pods)
+def wing_pts(sx):
+    return [(sx * 0.66, -0.02, zu(0.64)), (sx * 1.42, -0.1, zu(0.88)), (sx * 1.45, -0.1, zu(0.99)), (sx * 1.2, -0.09, zu(1.04)), (sx * 0.66, -0.02, zu(0.99))]
 
-# ================================================================ AG emitters
+
+for sx in (1, -1):
+    tag = "R" if sx > 0 else "L"
+    pts = wing_pts(sx)
+    uv = [(0.0, 0.0), (1.0, 0.0), (1.0, 0.3), (0.82, 0.55), (0.0, 0.55)]
+    slab(f"wing_{tag}", pts, 0.07, ["fsr_wing", "fsr_dark"], normal_hint=(0, 1, 0), uv=uv, group=f"wing_{tag}", bevel=0.012)
+    sphere(f"nav_{tag}", (sx * 1.46, -0.1, zu(0.94)), 0.03, (1, 1, 1), "fsr_light_green" if sx > 0 else "fsr_light_red", group=f"wing_{tag}")
+    # airbrake flap at the inner trailing edge, hinged along its front edge
+    hinge = (sx * 0.95, -0.04, zu(0.955))
+    slab(f"airbrake_{tag}", [(sx * 0.72, -0.03, zu(0.955)), (sx * 1.15, -0.06, zu(0.955)), (sx * 1.15, -0.06, zu(1.025)), (sx * 0.72, -0.03, zu(1.025))], 0.04,
+         ["fsr_yellow", "fsr_dark"], origin=hinge, group=f"airbrake_{tag}", bevel=0.006)
+
+# upper stabiliser fins (canted outward, hazard tips)
+for sx in (1, -1):
+    tag = "R" if sx > 0 else "L"
+    pts = [(sx * 0.28, 0.84, zu(0.82)), (sx * 0.44, 1.12, zu(0.95)), (sx * 0.46, 1.12, zu(1.02)), (sx * 0.28, 0.8, zu(1.0))]
+    slab(f"fin_{tag}", pts, 0.05, ["fsr_fin", "fsr_dark"], normal_hint=(sx, -0.3, 0), uv=[(0.0, 0.55), (0.5, 0.55), (0.5, 1.0), (0.0, 1.0)], group=f"fin_{tag}")
+
+# ================================================================ underside: AG keel channel + strakes
+box("keel_channel", (0, -0.37, zu(0.3)), (0.36, 0.02, 0.4 * L), "fsr_carbon", group="keel", bevel=0.004)
+loft("keel_pod", [
+    [(0.0, -0.38, zu(0.1)), (0.0, -0.38, zu(0.1)), (0.0, -0.38, zu(0.1)), (0.0, -0.38, zu(0.1))],
+    [(0.1, -0.38, zu(0.16)), (0.1, -0.46, zu(0.16)), (-0.1, -0.46, zu(0.16)), (-0.1, -0.38, zu(0.16))],
+    [(0.12, -0.38, zu(0.45)), (0.12, -0.48, zu(0.45)), (-0.12, -0.48, zu(0.45)), (-0.12, -0.38, zu(0.45))],
+    [(0.0, -0.38, zu(0.52)), (0.0, -0.38, zu(0.52)), (0.0, -0.38, zu(0.52)), (0.0, -0.38, zu(0.52))],
+], lambda i, j: 0, ["fsr_yellow"], group="keel", bevel=0.006, smooth=0.6)
+box("keel_glow", (0, -0.485, zu(0.3)), (0.12, 0.008, 1.8), "fsr_field", group="keel", bevel=0.0)
+for k, x in enumerate((-0.3, -0.12, 0.12, 0.3)):
+    box(f"strake_{k}", (x, -0.39, zu(0.8)), (0.05, 0.06, 1.5), "fsr_gunmetal", group="under", bevel=0.008)
 for s in (1, -1):
     tag = "R" if s > 0 else "L"
-    for k, u in enumerate((0.15, 0.3, 0.45, 0.6, 0.75)):
-        wb, wt, yb, yt = hull_at(u)
-        box(f"ag_frame_{tag}{k}", (s * (wb * 0.55), yb - 0.012, zu(u)), (wb * 0.6, 0.02, 0.7), "fsr_carbon", bevel=0.004, group=f"ag_{tag}")
-        box(f"ag_pad_{tag}{k}", (s * (wb * 0.55), yb - 0.024, zu(u)), (wb * 0.45, 0.008, 0.6), "fsr_field", bevel=0.0, group=f"ag_{tag}")
+    for k, u in enumerate((0.58, 0.72, 0.86)):
+        box(f"ag_pad_{tag}{k}", (s * 0.4, -0.375, zu(u)), (0.12, 0.01, 0.5), "fsr_field", bevel=0.0, group=f"ag_{tag}")
+
 
 # ================================================================ assemble
 def uv_project(ob):
@@ -594,7 +510,7 @@ def uv_project(ob):
     bpy.ops.object.mode_set(mode="OBJECT")
 
 
-KEEP_UV = {"hull", "wing_R", "wing_L"}
+KEEP_UV = {"hull", "wing_R", "wing_L", "fin_R", "fin_L", "engine", "pod_R", "pod_L"}
 for name, objs in PARTS.items():
     for o in scene.objects:
         o.select_set(False)
@@ -616,6 +532,14 @@ for name, objs in PARTS.items():
         uv_project(ob)
     if not name.startswith("airbrake"):
         bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
+
+# chunkier proportions (classic FEISAR): wider, taller, slightly shorter
+SCALE = (1.42, 1.62, 0.88)  # web x, y, z
+for ob in scene.objects:
+    ob.select_set(True)
+bpy.context.view_layer.objects.active = scene.objects[0]
+bpy.ops.transform.resize(value=(SCALE[0], SCALE[2], SCALE[1]), center_override=(0, 0, 0))
+bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 for o in scene.objects:

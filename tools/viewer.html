@@ -24,8 +24,9 @@ new GLTFLoader().load('../assets/models/feisar_fx350.glb', async g => {
     let c;
     if (ortho) { const h = Math.max(size.z * H / W, size.y, size.x * H / W) * .55; c = new THREE.OrthographicCamera(-h * W / H, h * W / H, h, -h, .1, 100); }
     else c = new THREE.PerspectiveCamera(28, W / H, .1, 100);
-    c.position.set(ctr.x + Math.sin(az) * Math.cos(el) * d, ctr.y + Math.sin(el) * d, ctr.z + Math.cos(az) * Math.cos(el) * d);
-    c.lookAt(ctr);
+    const look = q.get('look') ? new THREE.Vector3(...q.get('look').split(',').map(Number)) : ctr;
+    c.position.set(look.x + Math.sin(az) * Math.cos(el) * d, look.y + Math.sin(el) * d, look.z + Math.cos(az) * Math.cos(el) * d);
+    c.lookAt(look);
     r.setViewport(i * W, 0, W, H); r.setScissor(i * W, 0, W, H); r.render(sc, c);
   });
   document.title = 'done';
