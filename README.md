@@ -25,7 +25,9 @@ The craft is based on **"WipeOut - Feisar" by [Nobby76](https://sketchfab.com/no
 ([Sketchfab](https://sketchfab.com/3d-models/wipeout-feisar-74e42e2192384cccbada8486b1f0703b)),
 licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Changes for this site: display
 pedestal and boost effect removed, rescaled and reoriented, body split into assemblies for the exploded view,
-textures upscaled to 4K with Real-ESRGAN and re-graded, new panel/rivet normal detail.
+livery repainted as 4K vector artwork (`tools/livery_decals.py`, rasterised by `tools/feisar_livery.py`
+with headless Chrome; fonts in `tools/fonts`, SIL OFL), machinery block upscaled with Real-ESRGAN, new
+panel/rivet normal map and satin roughness.
 
 Rebuilding `assets/models/feisar_fx350.glb` from the Sketchfab download:
 

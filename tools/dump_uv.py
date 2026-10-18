@@ -29,6 +29,7 @@ for ob in bpy.context.scene.objects:
             "c": [round(c.x, 3), round(c.z, 3), round(-c.y, 3)],              # web x, y, z
             "n": [round(n.x, 3), round(n.z, 3), round(-n.y, 3)],
             "area": round(p.area, 5),
+            "p": [[round(w.x, 4), round(w.z, 4), round(-w.y, 4)] for w in (mw @ me.vertices[me.loops[li].vertex_index].co for li in p.loop_indices)],
         })
 json.dump(faces, open(OUT, "w"))
 print("FACES", len(faces))

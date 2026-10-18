@@ -73,8 +73,8 @@ camera.add(sky);
 scene.fog = new THREE.Fog(0xeef2f8, 18, 70);
 
 /* ---------------- lights ---------------- */
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c8e0, .35));
-const key = new THREE.DirectionalLight(0xffffff, 1.8);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c8e0, .22));
+const key = new THREE.DirectionalLight(0xffffff, 2.1);
 key.position.set(6, 12, 8);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -230,6 +230,8 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
     const m = o.material;
     if (/engine|field/.test(m.name)) { m.toneMapped = false; m.emissiveIntensity = 2.2; o.castShadow = false; }
     if (m.name === 'fsr_glass') { m.envMapIntensity = 2; }
+    if (m.name === 'Body') { m.envMapIntensity = .55; }          // satin livery: keep the colours saturated
+    if (m.name === 'Glass') { m.envMapIntensity = 1.6; }
     patchReveal(m);
     const w = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry, 32), wireMat);
     w.renderOrder = 2; o.add(w);
