@@ -84,7 +84,7 @@
     const finish = () => {
       if (finished) return;
       finished = true;
-      setTimeout(() => window.dispatchEvent(new Event('feisar:ignite')), 350);
+      setTimeout(() => { window.FEISAR_IGNITED = true; window.dispatchEvent(new Event('feisar:ignite')); }, 350);
       boot.classList.add('done');
       document.body.classList.remove('is-loading');
       setTimeout(() => document.body.classList.add('ready'), 450);
@@ -529,6 +529,7 @@
     links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sc.id));
     document.body.dataset.scene = sc.id;
     document.body.classList.toggle('scene-3d', !!sc.dataset.zone);
+    document.body.classList.toggle('last-scene', cur === N - 1);
   };
 
   const go = (target, instant = false) => {
@@ -564,6 +565,13 @@
   };
   window.FEISAR_GO = go;
 
+  // the hero headline and copy replay their intro on every return to the launch scene
+  let heroVisits = 0;
+  $('#hero').addEventListener('scene:enter', () => {
+    if (heroVisits++ === 0) return;
+    $$('#hero .split .ch, #hero .reveal-line').forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
+  });
+
   addEventListener('feisar:start', () => {
     started = true;
     const h = idOf(location.hash.slice(1));
@@ -572,6 +580,7 @@
 
   // links, rail and buttons pointing at scenes
   document.addEventListener('click', e => {
+    if (e.target.closest('[data-next]')) { go(cur + 1); return; }
     const r = e.target.closest('[data-go]');
     if (r) { go(+r.dataset.go); return; }
     const a = e.target.closest('a[href^="#"]');
@@ -612,8 +621,9 @@
     const now = performance.now();
     if (now - wheelT > 260) wheelAcc = 0;
     wheelT = now;
+    // one gesture = one jump: while a wheel / trackpad-inertia stream keeps arriving the lock stays on
+    if (now < lockUntil || busy) { lockUntil = Math.max(lockUntil, now + 400); wheelAcc = 0; return; }
     wheelAcc += dy;
-    if (now < lockUntil || busy) return;
     if (Math.abs(wheelAcc) > 55) { go(cur + Math.sign(wheelAcc)); wheelAcc = 0; lockUntil = now + 950; }
   }, { passive: false });
 
@@ -697,7 +707,7 @@
   let pmx = 0, pmy = 0;
   addEventListener('pointermove', e => { pmx = e.clientX / innerWidth - .5; pmy = e.clientY / innerHeight - .5; });
 
-  const holdRing = $('#holdRing'), holdTxt = $('#holdTxt');
+  const holdRing = $('#holdRing'), holdTxt = $('#holdTxt'), launchpad = $('#launchpad');
   let prevT = performance.now(), hx = innerWidth / 2, hy = innerHeight / 2, rpx = 0, rpy = 0;
   addEventListener('pointermove', e => { hx = e.clientX; hy = e.clientY; });
 
@@ -724,6 +734,7 @@
       if (holdP >= 1) { holdP = 1; go('track'); }
       STAGE.p = holdP; STAGE.boost = holding ? 1 : 0;
       ringOn = holding || (holdP > .01 && holdP < .84); ringP = Math.min(1, holdP / .84); ringLabel = holdP >= .84 ? 'Launch' : 'Hold';
+      launchpad.style.opacity = 1 - Math.min(1, holdP * 8);
     } else if (sc.id === 'track') {
       STAGE.p = (zoneT * .085) % 1;
       STAGE.boost = lerp(STAGE.boost, holding ? 1 : 0, 1 - Math.pow(.05, dt));

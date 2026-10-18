@@ -861,3 +861,26 @@ body.holding .hero__stage::before { animation: holdShake .08s linear infinite; }
   .hint { display: none; }
   .scount { left: auto; right: 62px; top: 12px; bottom: auto; margin: 0; transform: scale(.82); }
 }
+
+/* hero launch pad — the main interaction cue */
+.launchpad { position: absolute; z-index: 3; left: 64%; top: 74%; width: 118px; height: 118px; margin: -59px 0 0 -59px; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--white);
+  background: radial-gradient(circle, var(--blue) 0 52%, transparent 53%); transition: opacity .3s; cursor: none; }
+.launchpad b { font-family: var(--f-display); font-weight: 400; font-size: 13px; letter-spacing: .3em; padding-left: .3em; line-height: 1; }
+.launchpad span { font-size: 7.5px; color: var(--yellow); letter-spacing: .2em; }
+.launchpad i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid var(--blue); animation: padPulse 2.4s var(--ease) infinite; }
+.launchpad i:nth-child(2) { animation-delay: .8s; } .launchpad i:nth-child(3) { animation-delay: 1.6s; }
+.launchpad::before { content: ""; position: absolute; inset: -14px; border-radius: 50%; border: 2px dashed rgba(255,204,0,.8); animation: spin 9s linear infinite; }
+@keyframes padPulse { from { transform: scale(.55); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+body.holding .launchpad { pointer-events: none; }
+@media (max-width: 900px) { .launchpad { left: auto; right: 22px; top: 71%; width: 88px; height: 88px; margin: -44px 0 0 0; } }
+
+/* phones: explicit next button */
+.next-btn { display: none; }
+@media (max-width: 900px) {
+  .next-btn { position: fixed; right: 16px; bottom: 16px; z-index: 1200; display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--blue); color: var(--white);
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%); box-shadow: 0 10px 30px rgba(0,71,187,.35); }
+  .next-btn i { font-style: normal; animation: hintPulse 2s var(--ease) infinite; }
+  body.last-scene .next-btn { display: none; }
+  body[data-scene="hero"] .next-btn, body[data-scene="track"] .next-btn { bottom: 96px; }
+}

@@ -247,6 +247,7 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   };
   plume(0, .43, .22, 2.6); plume(.92, .15, .2, 2.2); plume(-.92, .15, .2, 2.2);
   shipReady = true;
+  if (window.FEISAR_IGNITED) ignite();
   window.dispatchEvent(new Event('feisar:model-ready'));
 }, undefined, err => console.error('FEISAR model failed to load', err));
 
@@ -411,7 +412,9 @@ addEventListener('pointermove', e => { mouse.x = e.clientX / innerWidth - .5; mo
 
 /* ---------------- ignition ---------------- */
 let igniteT = -1, igniteAt = 0;
-addEventListener('feisar:ignite', () => { igniteT = 0; igniteAt = performance.now(); if (REDUCED) REVEAL.value = -1e3; });
+// the reveal plays once both the interface has opened and the craft is loaded, whichever comes last
+const ignite = () => { if (igniteT >= 0 || !shipReady) return; igniteT = 0; igniteAt = performance.now(); if (REDUCED) REVEAL.value = -1e3; };
+addEventListener('feisar:ignite', ignite);
 
 /* ---------------- hero camera keys ---------------- */
 const KEYS = [
