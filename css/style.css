@@ -889,3 +889,17 @@ body.holding .launchpad { pointer-events: none; }
 /* scene reset before an entrance replay: no transitions for that one synchronous step */
 .scene.resetting, .scene.resetting * { transition: none !important; }
 .warp__bars i { will-change: transform; backface-visibility: hidden; }
+
+/* heading reveal: characters rise out of a mask, staggered per line — no glyph scrambling */
+.scramble { white-space: normal; }
+.scramble .word { display: inline-block; white-space: nowrap; overflow: hidden; vertical-align: top; padding-bottom: .06em; margin-bottom: -.06em; }
+.scramble .ch { display: inline-block; transform: translateY(108%); }
+.scramble.in .ch { animation: chRise .9s var(--ease) forwards; animation-delay: calc(var(--line, 0) * 120ms + var(--c) * 28ms + 120ms); }
+@keyframes chRise { from { transform: translateY(108%); } to { transform: none; } }
+.scene.is-active .h2 { animation: none; }
+
+/* soft swap for changing labels (spec name, map info, hints, form reference) */
+.txt-in { animation: txtIn .55s var(--ease) both; }
+#hintTxt.txt-in, #specCode.txt-in, #mapInfo.txt-in { display: inline-block; }
+@keyframes txtIn { from { opacity: 0; transform: translateY(.45em); } }
+@media (prefers-reduced-motion: reduce) { .scramble .ch { transform: none !important; } }

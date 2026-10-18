@@ -111,25 +111,26 @@
   /* ---------------------------------------------------------
      TEXT SCRAMBLE
      --------------------------------------------------------- */
-  const GLYPHS = 'ABCDEFGHJKLMNOPQRSTUVXYZ0123456789/<>[]—_+*#';
-  function scrambleTo(el, text, dur = 800) {
-    if (REDUCED) { el.textContent = text; return; }
-    const from = el.textContent, len = Math.max(from.length, text.length), t0 = performance.now();
-    cancelAnimationFrame(el._scr);
-    const step = now => {
-      const p = clamp((now - t0) / dur, 0, 1);
-      let out = '';
-      for (let i = 0; i < len; i++) {
-        const start = (i / len) * .55;
-        if (p >= start + .45) out += text[i] || '';
-        else if (p > start) out += text[i] === ' ' ? ' ' : GLYPHS[(Math.random() * GLYPHS.length) | 0];
-        else out += from[i] || '';
-      }
-      el.textContent = out;
-      if (p < 1) el._scr = requestAnimationFrame(step);
-    };
-    el._scr = requestAnimationFrame(step);
+  // Text swaps use a soft rise-in instead of random-glyph scrambling: the scramble changed glyph widths
+  // every frame, which made the text jitter and read as flicker.
+  function scrambleTo(el, text) {
+    el.textContent = text;
+    if (REDUCED) return;
+    el.classList.remove('txt-in'); void el.offsetWidth; el.classList.add('txt-in');
   }
+
+  // headings: one span per character (inside unbreakable word spans), revealed by a staggered rise
+  const splitChars = el => {
+    const words = el.textContent.split(' ');
+    el.textContent = '';
+    words.forEach((w, wi) => {
+      const word = document.createElement('span');
+      word.className = 'word';
+      [...w].forEach((c, ci) => { const sp = document.createElement('span'); sp.className = 'ch'; sp.textContent = c; sp.style.setProperty('--c', ci); word.appendChild(sp); });
+      el.appendChild(word);
+      if (wi < words.length - 1) el.appendChild(document.createTextNode(' '));
+    });
+  };
 
   /* ---------------------------------------------------------
      FLEET CARDS
@@ -426,19 +427,19 @@
     };
     requestAnimationFrame(step);
   };
-  $$('.scramble').forEach(el => { el.dataset.text = el.textContent; el.textContent = el.textContent.replace(/\S/g, ' '); });
+  $$('.scramble').forEach(el => { splitChars(el); el.style.setProperty('--line', [...el.parentNode.querySelectorAll('.scramble')].indexOf(el)); });
   // every scene replays its entrance each time it becomes active
   // (reset with transitions switched off, so a revisit replays exactly like the first visit — no half states)
   const enterScene = sc => {
     const items = $$('.reveal, .chart, .tl__item', sc);
     sc.classList.add('resetting');
     items.forEach(el => el.classList.remove('in'));
-    $$('.scramble', sc).forEach(el => { el.textContent = el.dataset.text.replace(/\S/g, ' '); });
+    $$('.scramble', sc).forEach(el => el.classList.remove('in'));
     sc.dispatchEvent(new CustomEvent('scene:reset'));
     void sc.offsetWidth;
     sc.classList.remove('resetting');
     requestAnimationFrame(() => requestAnimationFrame(() => items.forEach(el => el.classList.add('in'))));
-    $$('.scramble', sc).forEach((el, k) => setTimeout(() => scrambleTo(el, el.dataset.text, 900), 140 + k * 110));
+    requestAnimationFrame(() => requestAnimationFrame(() => $$('.scramble', sc).forEach(el => el.classList.add('in'))));
     $$('[data-count]', sc).forEach(countUp);
   };
 
