@@ -1,6 +1,7 @@
 /* ==========================================================
    FEISAR — WebGL world
-   One fixed canvas behind the page. Sections marked [data-zone]
+   One fixed canvas behind the interface. The scene controller in main.js publishes
+   window.FEISAR_STAGE = { zone, p, boost, drag, kick }; scenes marked [data-zone]
    drive it: "hero" (studio + scroll story), "track" (an AG circuit)
    and "eng" (exploded engineering view).
    ========================================================== */
@@ -426,14 +427,10 @@ const camNames = ['A-01', 'B-02', 'C-03', 'D-04'];
 
 /* ---------------- frame ---------------- */
 const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camUp = new THREE.Vector3(0, 1, 0);
-let prevZoneFrames = 0, last = performance.now(), t = 0, lastY = scrollY, vel = 0, prevZone = null, trackS = 0, trackSpeed = 0, flash = 0;
+let prevZoneFrames = 0, last = performance.now(), t = 0, vel = 0, prevZone = null, trackS = 0, trackSpeed = 0, flash = 0, warp = 0, lastKick = 0;
+const ST = window.FEISAR_STAGE || (window.FEISAR_STAGE = { zone: null, p: 0, boost: 0, drag: 0, kick: 0 });
 const pSm = {};
 
-function zoneProgress(el) {
-  const r = el.getBoundingClientRect();
-  const total = el.offsetHeight - innerHeight;
-  return { r, p: clamp(-r.top / (total || 1), 0, 1) };
-}
 
 const qHinge = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0);
 function setBrakes(l, r) {
@@ -457,7 +454,9 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min((now - last) / 1000, .05); last = now;
   t += dt; TIME.value = t;
-  vel = lerp(vel, Math.abs(scrollY - lastY) / Math.max(dt, .001), .1); lastY = scrollY;
+  vel = lerp(vel, ST.boost * 2600, .08);
+  if (ST.kick !== lastKick) { lastKick = ST.kick; flash = Math.max(flash, .5); warp = 1; }   // scene jump
+  warp = Math.max(0, warp - dt * 1.6);
   mouse.sx = lerp(mouse.sx, mouse.x, .06); mouse.sy = lerp(mouse.sy, mouse.y, .06);
 
   // ignition reveal
@@ -472,18 +471,13 @@ function frame(now) {
   }
   flash = Math.max(0, flash - dt * 2.2);
 
-  // pick the active zone
-  let zone = null, best = 0;
-  for (const el of zones) {
-    const r = el.getBoundingClientRect();
-    const vis = Math.min(r.bottom, innerHeight) - Math.max(r.top, 0);
-    if (vis > best) { best = vis; zone = el; }
-  }
-  canvas.style.opacity = zone ? 1 : 0;
-  if (!zone || !shipReady) return;
-  const name = zone.dataset.zone;
-  const { p } = zoneProgress(zone);
-  pSm[name] = pSm[name] == null ? p : lerp(pSm[name], p, 1 - Math.pow(.0008, dt));
+  // the active zone comes from the scene controller
+  const name = ST.zone;
+  canvas.style.opacity = name ? 1 : 0;
+  if (!name || !shipReady) return;
+  const p = ST.p;
+  if (name !== prevZone) pSm[name] = p;
+  pSm[name] = lerp(pSm[name], p, 1 - Math.pow(.004, dt));
   const P = pSm[name];
   const wide = W > 900;
 
@@ -553,10 +547,9 @@ function frame(now) {
 
   if (name === 'track' && track) {
     const { P: TP, T: TT, R: TR, U: TU, N } = track;
-    const target = .015 + P * .62 + t * .004;
-    const ds = target - trackS;
-    trackS = lerp(trackS, target, 1 - Math.pow(.02, dt));
-    trackSpeed = lerp(trackSpeed, Math.abs(ds) * 60 + .25, .05);
+    // the craft laps the circuit on its own; holding the pointer / space boosts it
+    trackSpeed = lerp(trackSpeed, .55 + ST.boost * .9, 1 - Math.pow(.15, dt));
+    trackS += dt * trackSpeed * .028;
     const s = ((trackS % 1) + 1) % 1, fi = s * N, i0 = Math.floor(fi), i1 = (i0 + 1) % N, f = fi - i0;
     const pos = TP[i0].clone().lerp(TP[i1], f), tan = TT[i0].clone().lerp(TT[i1], f).normalize();
     const right = TR[i0].clone().lerp(TR[i1], f).normalize(), up = TU[i0].clone().lerp(TU[i1], f).normalize();
@@ -598,7 +591,7 @@ function frame(now) {
     const e = smooth(.1, .38, P) * (1 - smooth(.86, .98, P));
     explode(e);
     WIRE_ALL.value = e * .55;
-    const az = -.5 - P * 1.1 + mouse.sx * .3, el = .5 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.45 : 1);
+    const az = -.5 - P * 1.1 + mouse.sx * .3 + ST.drag, el = .5 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.45 : 1);
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;
@@ -654,7 +647,8 @@ function frame(now) {
 
   // post fx
   fx.uniforms.uTime.value = t;
-  fx.uniforms.uBlur.value = REDUCED ? 0 : blur;
+  fx.uniforms.uBlur.value = REDUCED ? 0 : blur + warp * warp * .09;
+  aberr += warp * .006;
   fx.uniforms.uAberr.value = REDUCED ? 0 : aberr;
   fx.uniforms.uFlash.value = flash;
 

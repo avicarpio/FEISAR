@@ -1,5 +1,5 @@
 /* ==========================================================
-   FEISAR — UI & motion (Lenis + vanilla)
+   FEISAR — 2207 interface: scenes, HUD & motion (vanilla)
    Unofficial Wipeout fan site
    ========================================================== */
 (() => {
@@ -62,32 +62,7 @@
     });
   });
 
-  /* ---------------------------------------------------------
-     LENIS SMOOTH SCROLL
-     --------------------------------------------------------- */
-  let lenis = null;
-  if (window.Lenis && !REDUCED) {
-    lenis = new Lenis({ duration: 1.15, easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)), smoothWheel: true });
-    lenis.stop();
-    const raf = time => { lenis.raf(time); requestAnimationFrame(raf); };
-    requestAnimationFrame(raf);
-  }
   const nav = $('#nav');
-  const scrollToEl = el => {
-    if (!el) return;
-    if (lenis) lenis.scrollTo(el, { offset: 0, duration: 1.6 });
-    else el.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth' });
-  };
-  document.addEventListener('click', e => {
-    const a = e.target.closest('a[href^="#"]');
-    if (!a) return;
-    const id = a.getAttribute('href');
-    const el = id === '#top' ? document.body : $(id);
-    if (!el) return;
-    e.preventDefault();
-    nav.classList.remove('open');
-    scrollToEl(el);
-  });
 
   /* ---------------------------------------------------------
      BOOT
@@ -113,7 +88,7 @@
       boot.classList.add('done');
       document.body.classList.remove('is-loading');
       setTimeout(() => document.body.classList.add('ready'), 450);
-      lenis && lenis.start();
+      window.dispatchEvent(new Event('feisar:start'));
       setTimeout(() => boot.classList.add('gone'), 1500);
     };
     const step = now => {
@@ -196,16 +171,13 @@
       </article>`;
     $('#fleetTotal').textContent = String(SHIPS.length).padStart(2, '0');
 
-    const io = new IntersectionObserver(es => es.forEach(e => {
-      if (!e.isIntersecting) return;
-      const s = SHIPS[e.target.dataset.ship];
-      $$('.stat', e.target).forEach((row, j) => {
+    $('#fleet').addEventListener('scene:enter', () => $$('.ship-card[data-ship]').forEach((card, k) => {
+      const s = SHIPS[card.dataset.ship];
+      $$('.stat', card).forEach((row, j) => {
         const [, v, max] = s.stats[j];
-        setTimeout(() => { row.querySelector('i').style.setProperty('--v', Math.min(v / max, 1)); row.querySelector('b').textContent = `${v}/${max}`; }, 200 + j * 110);
+        setTimeout(() => { row.querySelector('i').style.setProperty('--v', Math.min(v / max, 1)); row.querySelector('b').textContent = `${v}/${max}`; }, 350 + k * 60 + j * 90);
       });
-      io.unobserve(e.target);
-    }), { threshold: .4 });
-    $$('.ship-card[data-ship]').forEach(c => io.observe(c));
+    }));
   })();
 
   /* ---------------------------------------------------------
@@ -273,7 +245,7 @@
     const b = e.target.closest('[data-cfg]');
     if (!b) return;
     spec.set(+b.dataset.cfg);
-    scrollToEl($('#spec'));
+    window.FEISAR_GO && window.FEISAR_GO('spec');
   });
 
   /* ---------------------------------------------------------
@@ -361,8 +333,7 @@
     const sec = $('#network');
     setInterval(() => {
       if (user || document.hidden) return;
-      const r = sec.getBoundingClientRect();
-      if (r.top < innerHeight && r.bottom > 0) select(auto++ % HQS.length);
+      if (sec.classList.contains('is-active')) select(auto++ % HQS.length);
     }, 2400);
   })();
 
@@ -391,7 +362,9 @@
       W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
     resize(); addEventListener('resize', resize);
-    new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(cv);
+    const sec = $('#investors');
+    sec.addEventListener('scene:enter', () => { visible = true; drawP = 0; setTimeout(resize, 50); });
+    sec.addEventListener('scene:leave', () => { visible = false; });
     setInterval(() => { if (visible) { data.push(data[data.length - 1] + (Math.random() - .47) * vol); data.shift(); } }, 900);
     let mouse = null;
     cv.addEventListener('pointermove', e => { mouse = e.clientX - cv.getBoundingClientRect().left; });
@@ -450,15 +423,16 @@
     requestAnimationFrame(step);
   };
   $$('.scramble').forEach(el => { el.dataset.text = el.textContent; el.textContent = el.textContent.replace(/\S/g, ' '); });
-  const io = new IntersectionObserver(es => es.forEach(e => {
-    if (!e.isIntersecting) return;
-    const el = e.target;
-    el.classList.add('in');
-    if (el.classList.contains('scramble')) setTimeout(() => scrambleTo(el, el.dataset.text, 1000), 80);
-    $$('[data-count]', el).forEach(countUp);
-    io.unobserve(el);
-  }), { threshold: .15, rootMargin: '0px 0px -6% 0px' });
-  $$('.reveal, .scramble, .chart, .tl__item').forEach(el => io.observe(el));
+  // every scene replays its entrance each time it becomes active
+  const enterScene = sc => {
+    const items = $$('.reveal, .chart, .tl__item', sc);
+    items.forEach(el => el.classList.remove('in'));
+    $$('.scramble', sc).forEach(el => { el.textContent = el.dataset.text.replace(/\S/g, ' '); });
+    void sc.offsetWidth;
+    requestAnimationFrame(() => items.forEach(el => el.classList.add('in')));
+    $$('.scramble', sc).forEach((el, k) => setTimeout(() => scrambleTo(el, el.dataset.text, 900), 140 + k * 110));
+    $$('[data-count]', sc).forEach(countUp);
+  };
 
   /* ---------------------------------------------------------
      CURSOR / MAGNETIC / TILT
@@ -475,7 +449,7 @@
       cur.style.transform = `translate(${cx}px,${cy}px)`;
       requestAnimationFrame(loop);
     })();
-    const hoverSel = 'a, button, [data-tilt], .ship-card, .sites li, .map-node, .dir, .pilot, input, select, .spec__viewer';
+    const hoverSel = 'a, button, [data-tilt], .ship-card, .sites li, .map-node, .dir, .pilot, input, select, .spec__viewer, .cmd li';
     document.addEventListener('mouseover', e => cur.classList.toggle('hover', !!e.target.closest(hoverSel)));
 
     document.addEventListener('pointermove', e => {
@@ -511,85 +485,282 @@
   measure();
 
   /* ---------------------------------------------------------
-     MAIN LOOP
+     SCENE CONTROLLER — one full-screen scene at a time, no page scroll.
+     Wheel / swipe / arrow keys / rail / command palette jump between scenes
+     with a warp transition; the 3D scenes take hold and drag input.
      --------------------------------------------------------- */
-  const fleet = $('#fleet'), fleetTrack = $('#fleetTrack'), fleetProg = $('#fleetProg'), fleetIdx = $('#fleetIdx'), fleetBg = $('.fleet__bgtype');
-  const tlFill = $('#tlFill'), tl = $('#tl');
-  const parallax = $$('[data-speed]');
-  const sectors = $$('[data-sector]');
-  const links = $$('#navLinks a');
-  const hudSpeed = $('#hudSpeed'), hudBar = $('#hudBar'), hudSector = $('#hudSector'), progress = $('#progress');
-  const cardInners = $$('.ship-card__inner', fleetTrack);
-  let navY = 0, last = scrollY, sv = 0, prevT = performance.now(), hudIdle = -1e4;
-  const hud = $('#hud');
-
-  const sizeFleet = () => {
-    if (innerWidth <= 900) { fleet.style.height = ''; return; }
-    fleet.style.height = (innerHeight + Math.max(0, fleetTrack.scrollWidth - innerWidth) * 1.1) + 'px';
+  const STAGE = window.FEISAR_STAGE = window.FEISAR_STAGE || { zone: null, p: 0, boost: 0, drag: 0, kick: 0 };
+  const scenes = $$('.scene'), N = scenes.length;
+  const rail = $('#rail'), warp = $('#warp'), progress = $('#progress');
+  const pad2 = n => String(n).padStart(2, '0');
+  const idOf = id => scenes.findIndex(s => s.id === id);
+  const HINTS = {
+    hero: ['◉', 'Hold to launch · wheel to explore'],
+    fleet: ['⇆', 'Drag or wheel through the fleet'],
+    spec: ['▤', 'Pick a craft'],
+    track: ['◉', 'Hold to boost'],
+    engineering: ['⟲', 'Drag to orbit · hold to reassemble'],
+    network: ['◎', 'Pick a headquarters'],
+    acquire: ['↵', 'Transmit your request'],
+    credits: ['↑', 'Back to launch with Home'],
   };
-  addEventListener('resize', sizeFleet); addEventListener('load', sizeFleet);
-  sizeFleet();
+  // giant ghost index behind every content scene (parallax layer)
+  scenes.forEach((sc, i) => {
+    if (sc.dataset.zone) return;
+    const g = document.createElement('div');
+    g.className = 'scene__ghost'; g.dataset.depth = '-1.2'; g.setAttribute('aria-hidden', 'true');
+    g.textContent = String(i + 1).padStart(2, '0');
+    sc.prepend(g);
+  });
+  rail.innerHTML = scenes.map((sc, i) => `<button data-go="${i}" aria-label="${sc.dataset.title}"><i></i><span class="mono">${pad2(i + 1)}</span><b>${sc.dataset.title}</b></button>`).join('');
+  $('#scTot').textContent = '/' + pad2(N);
+  const links = $$('#navLinks a');
+  let cur = -1, busy = false, started = false, lockUntil = 0;
+
+  const hud = () => {
+    const sc = scenes[cur];
+    $$('button', rail).forEach((b, i) => b.classList.toggle('on', i === cur));
+    $('#scNum').textContent = pad2(cur + 1);
+    $('#scArc').style.strokeDashoffset = 163.4 * (1 - (cur + 1) / N);
+    progress.style.transform = `scaleX(${(cur + 1) / N})`;
+    const [k, txt] = HINTS[sc.id] || ['↓', 'Wheel, swipe or ↓ to continue'];
+    $('#hintKey').textContent = k;
+    scrambleTo($('#hintTxt'), txt.toUpperCase(), 600);
+    links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sc.id));
+    document.body.dataset.scene = sc.id;
+    document.body.classList.toggle('scene-3d', !!sc.dataset.zone);
+  };
+
+  const go = (target, instant = false) => {
+    const i = typeof target === 'string' ? idOf(target) : clamp(target, 0, N - 1);
+    if (i < 0 || i === cur || (busy && !instant)) return;
+    const prev = scenes[cur], next = scenes[i], dir = i > cur ? 1 : -1;
+    busy = true;
+    nav.classList.remove('open');
+    closeCmd();
+    if (!instant && !REDUCED) {
+      STAGE.kick++;
+      $('#warpNum').textContent = pad2(i + 1);
+      $('#warpTitle').textContent = next.dataset.title.toUpperCase();
+      warp.classList.remove('run', 'up', 'down'); void warp.offsetWidth;
+      warp.classList.add('run', dir > 0 ? 'down' : 'up');
+      if (prev) prev.classList.add(dir > 0 ? 'leave-up' : 'leave-down');
+    }
+    const swap = () => {
+      if (prev) { prev.classList.remove('is-active', 'leave-up', 'leave-down'); prev.dispatchEvent(new CustomEvent('scene:leave')); }
+      next.scrollTop = 0;
+      next.classList.add('is-active');
+      cur = i;
+      STAGE.zone = next.dataset.zone || null;
+      STAGE.p = 0; STAGE.drag = 0; holdP = 0; zoneT = 0;
+      hud();
+      enterScene(next);
+      next.dispatchEvent(new CustomEvent('scene:enter'));
+      history.replaceState(null, '', '#' + next.id);
+    };
+    if (instant || REDUCED) { swap(); busy = false; return; }
+    setTimeout(swap, 400);                       // bars fully cover the screen here
+    setTimeout(() => { busy = false; }, 900);
+  };
+  window.FEISAR_GO = go;
+
+  addEventListener('feisar:start', () => {
+    started = true;
+    const h = idOf(location.hash.slice(1));
+    go(h > 0 ? h : 0, true);
+  });
+
+  // links, rail and buttons pointing at scenes
+  document.addEventListener('click', e => {
+    const r = e.target.closest('[data-go]');
+    if (r) { go(+r.dataset.go); return; }
+    const a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    const i = idOf(a.getAttribute('href').slice(1));
+    if (i < 0) return;
+    e.preventDefault();
+    go(i);
+  });
+
+  // does the active scene (or the element under the pointer) still have room to scroll that way?
+  const canScroll = (el, dy) => {
+    for (let n = el; n && n !== document.body; n = n.parentElement) {
+      if (n.scrollHeight > n.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) {
+        if (dy > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 2 : n.scrollTop > 2) return true;
+      }
+      if (n.classList.contains('scene')) break;
+    }
+    return false;
+  };
+
+  // fleet carousel: dragged or wheeled sideways; at either end the wheel moves on to the next scene
+  const fleetTrack = $('#fleetTrack'), fleetProg = $('#fleetProg'), fleetIdx = $('#fleetIdx'), fleetBg = $('.fleet__bgtype');
+  const cardInners = $$('.ship-card__inner', fleetTrack);
+  let fx = 0, fxT = 0, fxV = 0;
+  const fleetMax = () => Math.max(0, fleetTrack.scrollWidth - innerWidth + 80);
+
+  let wheelAcc = 0, wheelT = 0;
+  addEventListener('wheel', e => {
+    if (!started || $('#cmd').classList.contains('open')) return;
+    const sc = scenes[cur], dy = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (sc.id === 'fleet' && innerWidth > 900) {
+      const max = fleetMax();
+      if ((dy > 0 && fxT < max - 1) || (dy < 0 && fxT > 1)) { fxT = clamp(fxT + dy * 1.1, 0, max); e.preventDefault(); return; }
+    }
+    if (canScroll(e.target, dy)) return;
+    e.preventDefault();
+    const now = performance.now();
+    if (now - wheelT > 260) wheelAcc = 0;
+    wheelT = now;
+    wheelAcc += dy;
+    if (now < lockUntil || busy) return;
+    if (Math.abs(wheelAcc) > 55) { go(cur + Math.sign(wheelAcc)); wheelAcc = 0; lockUntil = now + 950; }
+  }, { passive: false });
+
+  let ty0 = null, tx0 = 0;
+  addEventListener('touchstart', e => { ty0 = e.touches[0].clientY; tx0 = e.touches[0].clientX; }, { passive: true });
+  addEventListener('touchend', e => {
+    if (ty0 == null) return;
+    const dy = ty0 - e.changedTouches[0].clientY, dx = tx0 - e.changedTouches[0].clientX;
+    ty0 = null;
+    if (Math.abs(dy) < 60 || Math.abs(dx) > Math.abs(dy) || canScroll(e.target, dy)) return;
+    go(cur + Math.sign(dy));
+  }, { passive: true });
+
+  // hold (pointer or space) — launch on the hero, boost on the track, reassemble in engineering
+  let holding = false, holdP = 0, zoneT = 0, dragX = null, dragMoved = false;
+  const interactive = 'a, button, input, select, textarea, label, .ship-card, .sites, .map-node, .spec__tabs, .stock, .rail, .cmd, .nav';
+  addEventListener('pointerdown', e => {
+    if (!started || e.button > 0 || e.target.closest(interactive)) return;
+    const sc = scenes[cur];
+    if (sc.id === 'fleet') { dragX = e.clientX; dragMoved = false; return; }
+    if (!sc.dataset.zone) return;
+    holding = true; dragX = e.clientX; dragMoved = false;
+    document.body.classList.add('holding');
+  });
+  addEventListener('pointermove', e => {
+    if (dragX == null) return;
+    const dx = e.clientX - dragX;
+    if (Math.abs(dx) > 6) dragMoved = true;
+    const sc = scenes[cur];
+    if (sc.id === 'fleet') { fxT = clamp(fxT - dx * 1.6, 0, fleetMax()); dragX = e.clientX; }
+    else if (sc.id === 'engineering' && dragMoved) { STAGE.drag += dx * .006; dragX = e.clientX; holding = false; document.body.classList.remove('holding'); }
+  });
+  const release = () => { holding = false; dragX = null; document.body.classList.remove('holding'); };
+  addEventListener('pointerup', release); addEventListener('pointercancel', release); addEventListener('blur', release);
+
+  addEventListener('keydown', e => {
+    if (!started) return;
+    const typing = e.target.closest('input, select, textarea');
+    if ((e.key === '/' && !typing) || (e.key.toLowerCase() === 'k' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); openCmd(); return; }
+    if ($('#cmd').classList.contains('open') || typing) return;
+    if (e.key === ' ' && scenes[cur].dataset.zone) { e.preventDefault(); if (!holding) { holding = true; document.body.classList.add('holding'); } return; }
+    if (['ArrowDown', 'PageDown'].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+    else if (['ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(N - 1);
+    else if (/^[1-9]$/.test(e.key)) go(+e.key - 1);
+    else if (scenes[cur].id === 'fleet' && ['ArrowRight', 'ArrowLeft'].includes(e.key)) fxT = clamp(fxT + (e.key === 'ArrowRight' ? 360 : -360), 0, fleetMax());
+  });
+  addEventListener('keyup', e => { if (e.key === ' ') release(); });
+
+  // command palette
+  const cmd = $('#cmd'), cmdInput = $('#cmdInput'), cmdList = $('#cmdList');
+  const ENTRIES = [
+    ...scenes.map((sc, i) => ({ label: sc.dataset.title, tag: 'Scene ' + pad2(i + 1), run: () => go(i) })),
+    ...SHIPS.map((s, i) => ({ label: s.name, tag: s.code + ' · spec sheet', run: () => { spec.set(i); go('spec'); } })),
+  ];
+  let cmdSel = 0, cmdItems = ENTRIES;
+  const renderCmd = () => {
+    const q = cmdInput.value.trim().toLowerCase();
+    cmdItems = ENTRIES.filter(x => !q || (x.label + ' ' + x.tag).toLowerCase().includes(q)).slice(0, 9);
+    cmdSel = clamp(cmdSel, 0, Math.max(0, cmdItems.length - 1));
+    cmdList.innerHTML = cmdItems.map((x, i) => `<li class="${i === cmdSel ? 'on' : ''}" data-i="${i}"><b>${x.label}</b><span class="mono">${x.tag}</span></li>`).join('') || '<li class="none mono">No match in the federal index</li>';
+  };
+  function openCmd() { cmd.classList.add('open'); cmdInput.value = ''; cmdSel = 0; renderCmd(); setTimeout(() => cmdInput.focus(), 30); }
+  function closeCmd() { cmd.classList.remove('open'); cmdInput.blur(); }
+  $('#cmdBtn').addEventListener('click', openCmd);
+  cmd.addEventListener('click', e => { const li = e.target.closest('[data-i]'); if (li) cmdItems[+li.dataset.i].run(); else if (e.target === cmd) closeCmd(); });
+  cmdInput.addEventListener('input', () => { cmdSel = 0; renderCmd(); });
+  cmdInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCmd();
+    else if (e.key === 'ArrowDown') { cmdSel++; renderCmd(); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { cmdSel--; renderCmd(); e.preventDefault(); }
+    else if (e.key === 'Enter' && cmdItems[cmdSel]) cmdItems[cmdSel].run();
+  });
+  addEventListener('keydown', e => { if (e.key === 'Escape') closeCmd(); });
+
+  // pointer parallax for scene layers marked [data-depth]
+  const depthEls = $$('[data-depth]');
+  const root = document.documentElement;
+  addEventListener('pointermove', e => { root.style.setProperty('--mx', e.clientX + 'px'); root.style.setProperty('--my', e.clientY + 'px'); });
+  let pmx = 0, pmy = 0;
+  addEventListener('pointermove', e => { pmx = e.clientX / innerWidth - .5; pmy = e.clientY / innerHeight - .5; });
+
+  const holdRing = $('#holdRing'), holdTxt = $('#holdTxt');
+  let prevT = performance.now(), hx = innerWidth / 2, hy = innerHeight / 2, rpx = 0, rpy = 0;
+  addEventListener('pointermove', e => { hx = e.clientX; hy = e.clientY; });
 
   const tick = now => {
     requestAnimationFrame(tick);
     const dt = Math.min((now - prevT) / 1000, .05) || .016; prevT = now;
-    const y = scrollY;
-    const v = (y - last) / dt; last = y;
-    sv = lerp(sv, v, .1);
-    document.documentElement.style.setProperty('--skew', `${clamp(sv * -.006, -9, 9).toFixed(2)}deg`);
 
     marquees.forEach(m => {
       if (!m.w) return;
-      m.x -= ((REDUCED ? 0 : 45) + Math.abs(sv) * .08) * m.dir * dt;
+      m.x -= (REDUCED ? 0 : 45) * m.dir * dt;
       m.x = ((m.x % m.w) - m.w) % m.w;
       m.el.style.transform = `translate3d(${m.x}px,0,0)`;
     });
+    if (cur < 0) return;
+    const sc = scenes[cur];
+    zoneT += dt;
 
-    nav.classList.toggle('scrolled', y > 40);
-    if (Math.abs(y - navY) > 10) {
-      nav.classList.toggle('hidden', y > navY && y > 600 && !nav.classList.contains('open'));
-      navY = y;
+    // interactive 3D scenes
+    let ringOn = false, ringP = 0, ringLabel = '';
+    if (sc.id === 'hero') {
+      if (holding) holdP += dt * .26;
+      else if (holdP < .84) holdP = Math.max(0, holdP - dt * .5);
+      else holdP += dt * .5;                                       // committed: the craft launches
+      if (holdP >= 1) { holdP = 1; go('track'); }
+      STAGE.p = holdP; STAGE.boost = holding ? 1 : 0;
+      ringOn = holding || (holdP > .01 && holdP < .84); ringP = Math.min(1, holdP / .84); ringLabel = holdP >= .84 ? 'Launch' : 'Hold';
+    } else if (sc.id === 'track') {
+      STAGE.p = (zoneT * .085) % 1;
+      STAGE.boost = lerp(STAGE.boost, holding ? 1 : 0, 1 - Math.pow(.05, dt));
+      ringOn = holding; ringP = STAGE.boost; ringLabel = 'Boost';
+    } else if (sc.id === 'engineering') {
+      const target = holding ? .04 : .6;
+      STAGE.p = lerp(STAGE.p, target, 1 - Math.pow(holding ? .2 : .35, dt));
+      if (!dragX) STAGE.drag *= Math.pow(.6, dt);
+      ringOn = holding; ringP = 1 - (STAGE.p - .04) / .56; ringLabel = 'Assemble';
+    }
+    holdRing.classList.toggle('on', ringOn);
+    if (ringOn) {
+      rpx = lerp(rpx, hx, .25); rpy = lerp(rpy, hy, .25);
+      holdRing.style.transform = `translate(${rpx}px, ${rpy}px)`;
+      holdRing.style.setProperty('--p', ringP.toFixed(3));
+      if (holdTxt.textContent !== ringLabel) holdTxt.textContent = ringLabel;
+    } else { rpx = hx; rpy = hy; }
+
+    // fleet carousel
+    if (sc.id === 'fleet' && innerWidth > 900) {
+      const prevX = fx;
+      fx = lerp(fx, fxT, 1 - Math.pow(.004, dt));
+      fxV = lerp(fxV, (fx - prevX) / dt, .2);
+      const max = fleetMax() || 1;
+      fleetTrack.style.transform = `translate3d(${-fx}px,0,0)`;
+      fleetBg.style.transform = `translate3d(${-fx * .3}px,0,0)`;
+      fleetProg.style.width = (fx / max * 100) + '%';
+      fleetIdx.textContent = pad2(Math.min(SHIPS.length, 1 + Math.round(fx / max * (SHIPS.length - 1))));
+      const sk = clamp(fxV * -.0035, -6, 6);
+      cardInners.forEach(c => { if (!c.matches(':hover')) c.style.transform = Math.abs(sk) > .05 ? `skewX(${sk}deg)` : ''; });
     }
 
-    const docH = document.documentElement.scrollHeight - innerHeight;
-    progress.style.transform = `scaleX(${clamp(y / (docH || 1), 0, 1)})`;
-    hudSpeed.textContent = String(Math.min(9999, Math.round(Math.abs(sv) * .9))).padStart(4, '0');
-    if (Math.abs(v) > 30) hudIdle = now;
-    hud.classList.toggle('on', document.body.classList.contains('ready') && now - hudIdle < 1400);
-    hudBar.style.width = Math.min(100, Math.abs(sv) / 40) + '%';
-
-    const mid = innerHeight * .45;
-    let active = null;
-    for (const s of sectors) { const r = s.getBoundingClientRect(); if (r.top < mid && r.bottom > mid) active = s; }
-    if (active) {
-      hudSector.textContent = String(active.dataset.sector).padStart(2, '0');
-      links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + active.id));
-    }
-
-    if (!REDUCED) parallax.forEach(el => {
-      const r = el.parentElement.getBoundingClientRect();
-      el.style.transform = `translate3d(${r.top * parseFloat(el.dataset.speed)}px,0,0)`;
+    if (!REDUCED) depthEls.forEach(el => {
+      if (!el.closest('.scene.is-active')) return;
+      const d = parseFloat(el.dataset.depth);
+      el.style.transform = `translate3d(${pmx * d * 60}px, ${pmy * d * 40}px, 0)`;
     });
-
-    if (innerWidth > 900) {
-      const r = fleet.getBoundingClientRect();
-      const total = fleet.offsetHeight - innerHeight;
-      const p = clamp(-r.top / (total || 1), 0, 1);
-      const extra = fleetTrack.scrollWidth - innerWidth;
-      fleetTrack.style.transform = `translate3d(${-p * extra}px,0,0)`;
-      fleetBg.style.transform = `translate3d(${-p * extra * .3}px,0,0)`;
-      fleetProg.style.width = p * 100 + '%';
-      fleetIdx.textContent = String(Math.min(SHIPS.length, 1 + Math.round(p * (SHIPS.length - 1)))).padStart(2, '0');
-      if (r.top < innerHeight && r.bottom > 0) {
-        const sk = clamp(sv * -.004, -4, 4);
-        cardInners.forEach(c => { if (!c.matches(':hover')) c.style.transform = Math.abs(sk) > .05 ? `skewX(${sk}deg)` : ''; });
-      }
-    }
-
-    const tr = tl.getBoundingClientRect();
-    const tp = clamp((innerHeight * .75 - tr.top) / tr.height, 0, 1);
-    if (innerWidth > 1000) { tlFill.style.width = tp * 100 + '%'; tlFill.style.height = ''; }
-    else { tlFill.style.height = tp * 100 + '%'; tlFill.style.width = ''; }
   };
   requestAnimationFrame(tick);
 

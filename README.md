@@ -3,8 +3,10 @@
 An unofficial, non-commercial **Wipeout fan site** that imagines FEISAR — Federal European Industrial
 Science and Research — as a real European agency selling its anti-gravity racing craft.
 
-- **Hero:** a Three.js scene with a scroll-driven camera story around a fan-made 3D recreation of the
-  FEISAR FX350 (Wipeout HD).
+- **Interface:** no page scroll. Fourteen full-screen scenes, navigated with the wheel, swipes, arrow
+  keys, number keys, the side rail or the command palette (`/` or Ctrl+K), with a warp transition.
+- **3D scenes (Three.js):** hold the pointer or Space on the launch scene to fire up and launch the FX350,
+  hold to boost on the test run, and drag to orbit / hold to reassemble the exploded engineering view.
 - **Fleet:** every FEISAR craft from AGRC 2048 to FX350 Fury, with in-game stats and a spec sheet.
 - **Lore:** heritage, twelve headquarters, pilots, research and investor relations, plus an acquisition form.
   The form is a simulation and sends nothing.
@@ -18,6 +20,11 @@ python3 -m http.server 8097
 ```
 
 Then open http://localhost:8097.
+
+## Logo
+
+`assets/brand/feisar-logo.svg` is the FEISAR emblem and wordmark redrawn from the Wipeout 3 logo
+(fan use; FEISAR belongs to its owners).
 
 ## 3D model
 
