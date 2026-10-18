@@ -207,7 +207,7 @@ function patchReveal(m) {
 // exploded-view offsets by part name
 const EXPLODE = [
   [/^canopy_glass/, [0, 1.7, .3]], [/^canopy_frame/, [0, 1.25, .3]], [/^cockpit/, [0, .75, .6]],
-  [/^nose/, [0, .1, 2.6]], [/^side_R/, [1.9, .1, -.4]], [/^side_L/, [-1.9, .1, -.4]],
+  [/^nose/, [0, .1, 2.1]], [/^side_R/, [1.9, .1, -.4]], [/^side_L/, [-1.9, .1, -.4]],
   [/^rear/, [0, .3, -2.4]], [/^glow/, [0, -1.4, 0]],
 ];
 
@@ -389,6 +389,8 @@ const roVel = document.getElementById('roVel'), roFld = document.getElementById(
 const tWords = [...document.querySelectorAll('.tword')];
 const tkTime = document.getElementById('tkTime'), tkSpeed = document.getElementById('tkSpeed'), tkBar = document.getElementById('tkBar');
 const engLabels = [...document.querySelectorAll('.eng-label')];
+const engLines = document.querySelector('.eng-lines');
+const engIntro = document.querySelector('.eng__intro');
 
 /* ---------------- sizing / input ---------------- */
 let W = 0, H = 0;
@@ -595,11 +597,11 @@ function frame(now) {
     const e = smooth(.1, .38, P) * (1 - smooth(.86, .98, P));
     explode(e);
     WIRE_ALL.value = e * .55;
-    const az = -.5 - P * 1.1 + mouse.sx * .3, el = .5 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.6 : 1);
+    const az = -.5 - P * 1.1 + mouse.sx * .3, el = .5 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.45 : 1);
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;
-    camera.setViewOffset(W, H, wide ? -W * .16 : 0, wide ? 0 : -H * .12, W, H);
+    camera.setViewOffset(W, H, wide ? -W * .1 : 0, wide ? -H * .04 : -H * .12, W, H);
     camera.updateProjectionMatrix();
     shipRoot.position.set(0, Math.sin(t * 1.5) * .06, 0);
     shipRoot.rotation.set(0, 0, 0);
@@ -608,17 +610,44 @@ function frame(now) {
     field2.rotation.z = t * .3;
     updateLines(.08, dt, false);
     ship.updateMatrixWorld(true);
-    const [cx] = project(tmp.set(0, .3, -.4).applyMatrix4(ship.matrixWorld));
+    const [cx, cy] = project(tmp.set(0, .3, -.4).applyMatrix4(ship.matrixWorld));
+    // technical-drawing callouts: labels stacked in two columns either side of the craft, leader lines to the parts
+    const items = [];
     engLabels.forEach((lab, i) => {
       const part = parts.find(pt => pt.node.name === lab.dataset.part);
       if (!part) return;
       tmp2.copy(anchors[part.node.name]).addScaledVector(part.off, e * 1.35).applyMatrix4(ship.matrixWorld);
       const [x, y] = project(tmp2);
       const o = smooth(.3 + i * .015, .45 + i * .015, P) * (1 - smooth(.82, .88, P));
-      lab.style.opacity = o;
-      lab.classList.toggle('flip', x < cx);
-      lab.style.transform = `translate(${x}px, ${y}px)`;
+      items.push({ lab, x, y, o });
     });
+    [...items].sort((a, b) => a.x - b.x).forEach((it, k) => { it.left = k < Math.floor(items.length / 2); });
+    const colW = Math.min(W * .27, 420), gap = 58, svgParts = [];
+    if (!wide) items.forEach(it => {                  // phones: numbered markers on the parts, no columns
+      it.lab.classList.remove('flip');
+      it.lab.style.opacity = it.o;
+      it.lab.style.transform = `translate(${it.x}px, ${it.y}px)`;
+    });
+    for (const left of wide ? [true, false] : []) {
+      const col = items.filter(it => it.left === left).sort((a, b) => a.y - b.y);
+      const floor = left && wide ? engIntro.getBoundingClientRect().bottom + 50 : H * .2;
+      const top = Math.max(floor, cy - (col.length - 1) * gap / 2 - 40);
+      col.forEach((it, k) => { it.ly = Math.max(it.y, top + k * gap); });
+      for (let k = col.length - 2; k >= 0; k--) col[k].ly = Math.min(col[k].ly, col[k + 1].ly - gap);
+      col.forEach(it => {
+        const lx = left ? Math.max(260, cx - colW) : Math.min(W - 280, cx + colW);
+        const ex = lx + (left ? 34 : -34);
+        it.lab.classList.toggle('flip', left);
+        it.lab.style.opacity = it.o;
+        it.lab.style.transform = `translate(${lx + (left ? -6 : 6)}px, ${it.ly}px)`;
+        if (it.o > .01) {
+          const len = Math.hypot(ex - it.x, it.ly - it.y) + Math.abs(lx - ex);
+          svgParts.push(`<g opacity="${Math.min(1, it.o * 1.4).toFixed(3)}"><path d="M${it.x.toFixed(1)},${it.y.toFixed(1)} L${ex.toFixed(1)},${it.ly.toFixed(1)} L${lx.toFixed(1)},${it.ly.toFixed(1)}" stroke-dasharray="${len.toFixed(0)}" stroke-dashoffset="${((1 - it.o) * len).toFixed(0)}"/>` +
+            `<circle class="halo" cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="${(9 + Math.sin(t * 3 + it.x) * 2).toFixed(1)}"/><circle cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="3.5"/></g>`);
+        }
+      });
+    }
+    engLines.innerHTML = svgParts.join('');
   } else WIRE_ALL.value = 0;
 
   // post fx
