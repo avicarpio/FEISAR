@@ -1,34 +1,39 @@
 /* ==========================================================
-   FEISAR FX350 livery — painted at runtime on canvas.
+   FEISAR FX350 (Wipeout HD) livery — painted at runtime on canvas.
    UV layout comes from tools/build_feisar.py:
-   hull  u = 0 nose → 1 tail, v = position around the hull profile (VB bands)
-   panel u = 0 front → 1 rear, v = 0 top → 1 bottom (both sides share it)
+   hull  x = 0 nose → 1 rear face, y = band around the hull profile (VB)
+   wing  x = 0..0.5 top surface (leading → trailing edge), 0.5..1 underside (trailing → leading),
+         y = 0 root → 1 tip (both wings share it, so the art is symmetric)
    ========================================================== */
 import * as THREE from 'three';
 
-const VB = [0, .30, .34, .41, .50, .54, .76, .80, .89, .96, 1];
+// strips: bottom, lipR, lowerR, upperR, shoulderR, deckR, crown, deckL, shoulderL, upperL, lowerL, lipL
+const VB = [0, .30, .34, .42, .50, .56, .61, .69, .74, .80, .88, .96, 1];
 const C = {
-  white: '#f3f6fa', sky: '#3aa6dc', teal: '#1d7fb4', yellow: '#e8b62a', dark: '#262c35', black: '#14181f', ink: '#0a1530',
+  teal: '#2fa3cf', tealDark: '#1d7fae', white: '#eef2f6', grey: '#c9d2dc', yellow: '#f2c418',
+  dark: '#2b313a', black: '#14181f', ink: '#0a1530', red: '#e5293b', blue: '#0047bb',
 };
 
-const star = (x, cx, cy, R) => {
-  x.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? R * .42 : R;
-    x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-  }
-  x.closePath(); x.fill();
-};
-
-// draw text into a band with a transform so it reads correctly on the model
-function bandText(x, text, { cx, cy, size, font, color, flipX = false, flipY = false, weight = '', align = 'left', spacing = 0 }) {
+function text(x, str, { cx, cy, size, font, color, weight = '', align = 'left', flipX = false, flipY = false, spacing = 0, stroke = 0 }) {
   x.save();
   x.translate(cx, cy);
   x.scale(flipX ? -1 : 1, flipY ? -1 : 1);
   x.font = `${weight} ${size}px ${font}`;
-  x.fillStyle = color; x.textBaseline = 'middle'; x.textAlign = align;
+  x.textBaseline = 'middle'; x.textAlign = align;
   if ('letterSpacing' in x) x.letterSpacing = spacing + 'px';
-  x.fillText(text, 0, 0);
+  if (stroke) { x.lineWidth = stroke; x.strokeStyle = color; x.strokeText(str, 0, 0); }
+  else { x.fillStyle = color; x.fillText(str, 0, 0); }
+  x.restore();
+}
+
+// FEISAR roundel: white disc, blue swoosh, yellow base
+function roundel(x, cx, cy, r) {
+  x.save(); x.translate(cx, cy);
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(0, 0, r, 0, 7); x.fill();
+  x.beginPath(); x.arc(0, 0, r * .9, 0, 7); x.clip();
+  x.fillStyle = '#1a8fc4'; x.beginPath(); x.moveTo(-r, -r * .1); x.bezierCurveTo(-r * .3, -r * .2, -r * .1, -r * .9, r, -r * .75); x.lineTo(r, -r); x.lineTo(-r, -r); x.fill();
+  x.fillStyle = '#9fd4ec'; x.fillRect(-r, -r * .05, r * 2, r * .14);
+  x.fillStyle = C.yellow; x.beginPath(); x.moveTo(-r, r * .55); x.bezierCurveTo(-r * .2, r * .45, 0, r * .2, r, r * .25); x.lineTo(r, r); x.lineTo(-r, r); x.fill();
   x.restore();
 }
 
@@ -37,118 +42,112 @@ function paintHull() {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');
   const band = i => [VB[i] * H, VB[i + 1] * H];
-  const fill = (i, col) => { const [a, b] = band(i); x.fillStyle = col; x.fillRect(0, a, W, b - a); };
+  const fill = (i, col, x0 = 0, x1 = 1) => { const [a, b] = band(i); x.fillStyle = col; x.fillRect(x0 * W, a, (x1 - x0) * W, b - a); };
+  const U = u => u / .905 * W; // ship length fraction -> canvas x
 
-  fill(0, C.dark); fill(1, C.black); fill(9, C.black);
-  fill(2, C.yellow); fill(8, C.yellow);
-  fill(3, C.sky); fill(7, C.sky);
-  fill(4, C.white); fill(6, C.white); fill(5, C.white);
+  fill(0, C.dark); fill(1, C.black); fill(11, C.black);
+  for (const i of [2, 3, 4, 8, 9, 10]) fill(i, C.teal);
+  for (const i of [5, 7]) fill(i, C.grey);
+  fill(6, C.white);
+  // light grey mid-body panel on the lower sides (as in the side elevation)
+  for (const i of [2, 10]) fill(i, C.white, .25 / .905, .62 / .905);
+  for (const i of [3, 9]) fill(i, C.grey, .44 / .905, .62 / .905);
+  // nose cap tint
+  for (const i of [5, 6, 7]) fill(i, C.teal, 0, .06 / .905);
 
-  // rear deck (under the cowl) in sky blue
-  const [t0, t1] = band(5);
-  x.fillStyle = C.sky; x.fillRect(W * .76, t0, W * .24, t1 - t0);
-
-  // --- top deck ---
-  x.fillStyle = C.sky;
-  x.fillRect(0, t0 + 10, W * .76, 5); x.fillRect(0, t1 - 15, W * .76, 5);
-  x.fillStyle = C.teal; x.fillRect(W * .1, (t0 + t1) / 2 - 2, W * .6, 3);
-  // nose hazard chevrons
-  x.save(); x.beginPath(); x.rect(0, t0, 160, t1 - t0); x.clip();
-  for (let i = -6; i < 12; i++) {
-    x.fillStyle = i % 2 ? C.yellow : C.ink;
-    x.beginPath(); x.moveTo(i * 36, t0); x.lineTo(i * 36 + 36, t0); x.lineTo(i * 36 + 36 + 80, t1); x.lineTo(i * 36 + 80, t1); x.fill();
-  }
-  x.restore();
-  bandText(x, 'race for e-unity', { cx: 260, cy: t1 - 52, size: 58, font: 'Saira, sans-serif', weight: 600, color: C.teal, flipY: true });
-  bandText(x, 'FEISAR', { cx: 1180, cy: (t0 + t1) / 2 - 6, size: 120, font: 'Michroma, sans-serif', color: C.sky, flipY: true });
-  bandText(x, 'FX350 · FEDERAL BUILD 2207 · BOLOGNA', { cx: 260, cy: t0 + 46, size: 22, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 4, flipY: true });
-  // 12-star emblem
-  const ex = 2420, ey = (t0 + t1) / 2;
-  x.fillStyle = '#0047bb'; x.beginPath(); x.arc(ex, ey, 86, 0, 7); x.fill();
-  x.fillStyle = '#ffcc00';
-  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; star(x, ex + Math.cos(a) * 58, ey + Math.sin(a) * 58, 11); }
-  // panel lines + rivets
-  x.strokeStyle = 'rgba(10,21,48,.28)'; x.lineWidth = 3;
-  for (const px of [820, 1720, 2060, 2700]) { x.beginPath(); x.moveTo(px, t0); x.lineTo(px, t1); x.stroke(); }
-  x.fillStyle = 'rgba(10,21,48,.3)';
-  for (let px = 860; px < 2900; px += 46) { x.fillRect(px, t0 + 26, 4, 4); x.fillRect(px, t1 - 30, 4, 4); }
-  // barcode
-  for (let i = 0, px = 2780; i < 40; i++) { const w = 2 + (i * 7 % 5); x.fillStyle = C.ink; x.fillRect(px, t0 + 70, w, 70); px += w + 3 + (i * 3 % 4); }
-
-  // --- side bands (right = flipY, left = flipX) ---
-  const sides = [
-    { upper: band(3), lower: band(2), flipY: true, flipX: false },
-    { upper: band(7), lower: band(8), flipY: false, flipX: true },
-  ];
+  // side graphics: right side reads with flipY, left side with flipX
+  const sides = [{ up: band(3), lo: band(2), fy: true, fx: false }, { up: band(9), lo: band(10), fy: false, fx: true }];
   for (const s of sides) {
-    const [u0, u1] = s.upper, uc = (u0 + u1) / 2;
-    const [l0, l1] = s.lower, lc = (l0 + l1) / 2;
-    const at = px => s.flipX ? W - px : px; // left side reads towards the nose
-    // big lowercase logotype
-    bandText(x, 'feisar', { cx: s.flipX ? W - 520 : 520, cy: uc, size: 74, font: 'Michroma, sans-serif', color: C.white, flipX: s.flipX, flipY: s.flipY, align: s.flipX ? 'right' : 'left' });
-    bandText(x, 'race for e-unity', { cx: s.flipX ? W - 1200 : 1200, cy: uc, size: 40, font: 'Saira, sans-serif', weight: 600, color: C.white, flipX: s.flipX, flipY: s.flipY, align: s.flipX ? 'right' : 'left' });
-    // panel lines
-    x.strokeStyle = 'rgba(10,21,48,.25)'; x.lineWidth = 3;
-    for (const px of [420, 1060, 1900, 2500, 2960]) { x.beginPath(); x.moveTo(at(px), u0); x.lineTo(at(px), u1); x.stroke(); }
-    // vents
-    x.fillStyle = 'rgba(10,21,48,.75)';
-    for (let k = 0; k < 6; k++) x.fillRect(at(2060 + k * 26), uc - 22, 12 * (s.flipX ? -1 : 1), 44);
-    // tail chevrons
-    x.fillStyle = C.white;
-    for (let k = 0; k < 3; k++) {
-      const bx = at(2620 + k * 50), d = s.flipX ? -1 : 1;
-      x.beginPath(); x.moveTo(bx, uc - 22); x.lineTo(bx + 26 * d, uc); x.lineTo(bx, uc + 22); x.lineTo(bx + 10 * d, uc); x.fill();
-    }
-    // lower yellow band: pinstripe + microtext
-    x.fillStyle = C.ink; x.fillRect(0, s.flipY ? l1 - 6 : l0, W, 6);
-    for (let k = 0; k < 4; k++)
-      bandText(x, 'STRENGTH IN UNITY · FEISAR AG-SYS · EUROPEAN FEDERATION', { cx: at(300 + k * 900), cy: lc, size: 20, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, flipX: s.flipX, flipY: s.flipY, align: s.flipX ? 'right' : 'left', spacing: 3 });
+    const at = u => s.fx ? W - U(u) : U(u);
+    const uc = (s.up[0] + s.up[1]) / 2, lc = (s.lo[0] + s.lo[1]) / 2;
+    const al = s.fx ? 'right' : 'left';
+    text(x, 'feisar.', { cx: at(.05), cy: uc, size: 70, font: 'Michroma, sans-serif', color: C.white, flipX: s.fx, flipY: s.fy, align: al });
+    text(x, 'race for e-unity', { cx: at(.06), cy: lc, size: 40, font: 'Saira, sans-serif', weight: 600, color: C.white, flipX: s.fx, flipY: s.fy, align: al, spacing: 2 });
+    text(x, 'mogoc', { cx: at(.47), cy: uc + (s.fy ? -4 : 4), size: 78, font: 'Michroma, sans-serif', color: C.ink, flipX: s.fx, flipY: s.fy, align: al });
+    text(x, 'FX350 · BOLOGNA BUILD', { cx: at(.47), cy: lc, size: 24, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, flipX: s.fx, flipY: s.fy, align: al, spacing: 3 });
+    // panel seams + red/white hazard tabs
+    x.strokeStyle = 'rgba(10,21,48,.35)'; x.lineWidth = 3;
+    for (const u of [.17, .36, .44, .62, .74]) { x.beginPath(); x.moveTo(at(u), s.up[0]); x.lineTo(at(u), s.lo[1]); x.stroke(); }
+    x.fillStyle = C.red; x.fillRect(at(.415) - 14, uc - 14, 28, 28);
+    x.fillStyle = C.white; x.fillRect(at(.415) - 6, uc - 6, 12, 12);
+    // tail vent grille
+    x.fillStyle = 'rgba(10,21,48,.85)';
+    for (let k = 0; k < 8; k++) x.fillRect(at(.8) + (s.fx ? -1 : 1) * k * 22, uc - 26, (s.fx ? -1 : 1) * 10, 52);
   }
-  // chamfer pinlines
-  for (const i of [4, 6]) { const [a, b] = band(i); x.fillStyle = C.sky; x.fillRect(0, (a + b) / 2 - 2, W * .76, 4); }
+  // deck: teal edge pinlines, roundel, small print
+  for (const i of [5, 7]) { const [a, b] = band(i); x.fillStyle = C.teal; x.fillRect(U(.06), (a + b) / 2 - 3, U(.4), 6); }
+  const [c0, c1] = band(6), cc = (c0 + c1) / 2;
+  roundel(x, U(.33), cc, 62);
+  text(x, 'FEISAR', { cx: U(.14), cy: cc, size: 64, font: 'Michroma, sans-serif', color: C.teal, flipY: true });
   // underside panels
   const [b0, b1] = band(0);
   x.fillStyle = 'rgba(255,255,255,.06)';
-  for (let k = 0; k < 7; k++) x.fillRect(300 + k * 520, b0 + 30, 420, b1 - b0 - 60);
-
+  for (let k = 0; k < 8; k++) x.fillRect(200 + k * 480, b0 + 30, 400, b1 - b0 - 60);
   return c;
 }
 
-function paintPanel() {
-  const W = 1024, H = 512;
+function paintWing() {
+  const W = 2048, H = 1024;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');
-  x.fillStyle = C.yellow; x.fillRect(0, 0, W, H);
-  x.fillStyle = C.sky; x.fillRect(0, H * .74, W, H * .26);
-  x.fillStyle = C.white; x.fillRect(0, H * .72, W, 10);
-  // hazard bar along the top edge
-  x.save(); x.beginPath(); x.rect(0, 0, W, 26); x.clip();
-  for (let i = -2; i < 60; i++) { x.fillStyle = i % 2 ? C.ink : C.yellow; x.beginPath(); x.moveTo(i * 24, 0); x.lineTo(i * 24 + 24, 0); x.lineTo(i * 24 + 10, 26); x.lineTo(i * 24 - 14, 26); x.fill(); }
+  const T = (q, s) => [q * W * .5, s * H];          // top surface
+  const Bt = (q, s) => [W - q * W * .5, s * H];      // underside
+  // base
+  x.fillStyle = C.teal; x.fillRect(0, 0, W / 2, H);
+  x.fillStyle = C.tealDark; x.fillRect(W / 2, 0, W / 2, H);
+  // root band (the yellow chevron of the top elevation)
+  x.fillStyle = C.yellow; x.fillRect(0, 0, W / 2, H * .07);
+  // leading-edge yellow band, widest at the root, then grey stripe
+  const poly = (pts, col) => { x.fillStyle = col; x.beginPath(); pts.forEach(([a, b], i) => i ? x.lineTo(a, b) : x.moveTo(a, b)); x.closePath(); x.fill(); };
+  poly([T(0, 0), T(.36, 0), T(.3, .55), T(.12, 1), T(0, 1)], C.yellow);
+  poly([T(.36, 0), T(.44, 0), T(.38, .55), T(.18, 1), T(.12, 1), T(.3, .55)], C.grey);
+  poly([Bt(0, 0), Bt(.3, 0), Bt(.2, 1), Bt(0, 1)], C.yellow);
+  // grille surround
+  x.strokeStyle = C.yellow; x.lineWidth = 14;
+  x.strokeRect(T(.26, .08)[0], T(.26, .08)[1], T(.74, 0)[0] - T(.26, 0)[0], H * .28);
+  // wingtip oval "eye"
+  const [ox, oy] = T(.64, .86);
+  x.save(); x.translate(ox, oy); x.scale(1, 1.25);
+  x.fillStyle = '#ffffff'; x.beginPath(); x.ellipse(0, 0, 150, 100, 0, 0, 7); x.fill();
+  x.beginPath(); x.ellipse(0, 0, 138, 88, 0, 0, 7); x.clip();
+  x.fillStyle = C.grey; x.fillRect(-160, -30, 320, 18); x.fillRect(-160, 0, 320, 10);
+  x.fillStyle = C.yellow; x.fillRect(-160, 30, 320, 80);
   x.restore();
-  bandText(x, '350', { cx: 250, cy: 210, size: 150, font: 'Michroma, sans-serif', color: C.ink });
-  bandText(x, 'FEISAR', { cx: 260, cy: 312, size: 46, font: 'Michroma, sans-serif', color: C.white });
-  bandText(x, 'AIRBRAKE ZONE · KEEP CLEAR', { cx: 260, cy: 345, size: 18, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 3 });
+  x.strokeStyle = C.ink; x.lineWidth = 6; x.beginPath(); x.ellipse(ox, oy, 150, 125, 0, 0, 7); x.stroke();
+  // trailing-edge dark band + hazard
+  x.fillStyle = C.black; x.fillRect(T(.96, 0)[0], 0, W * .02, H);
+  x.save(); x.beginPath(); x.rect(T(.88, .55)[0], H * .55, W * .035, H * .22); x.clip();
+  for (let i = -4; i < 30; i++) { x.fillStyle = i % 2 ? C.yellow : C.ink; x.fillRect(T(.88, 0)[0], H * .55 + i * 24, W * .04, 12); }
+  x.restore();
+  // small decals
+  x.fillStyle = C.red; x.fillRect(T(.8, .62)[0], T(.8, .62)[1], 40, 26);
+  x.fillStyle = C.white; x.fillRect(T(.8, .62)[0] + 6, T(.8, .62)[1] + 6, 12, 14);
+  // panel seams
   x.strokeStyle = 'rgba(10,21,48,.3)'; x.lineWidth = 3;
-  x.beginPath(); x.moveTo(380, 40); x.lineTo(380, H * .72); x.stroke();
-  bandText(x, 'race for e-unity', { cx: 520, cy: H * .87, size: 40, font: 'Saira, sans-serif', weight: 600, color: C.white });
+  for (const s of [.4, .62]) { x.beginPath(); x.moveTo(0, s * H); x.lineTo(W / 2, s * H); x.stroke(); }
+  for (const q of [.55, .8]) { x.beginPath(); x.moveTo(T(q, 0)[0], 0); x.lineTo(T(q, 0)[0], H); x.stroke(); }
   return c;
 }
 
-function paintBump() {
-  // grooves (dark) for panel lines, raised rivets (light) — same layout as paintHull
+function paintBump(kind) {
   const W = 2048, H = 512;
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   const x = c.getContext('2d');
   x.fillStyle = '#808080'; x.fillRect(0, 0, W, H);
-  x.strokeStyle = '#303030'; x.lineWidth = 3;
-  const line = (x0, y0, x1, y1) => { x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke(); };
-  const vb = i => VB[i] * H;
-  for (const px of [410, 860, 1030, 1350]) line(px, vb(5), px, vb(6));
-  for (const px of [210, 530, 950, 1250, 1480]) { line(px, vb(3), px, vb(4)); line(W - px, vb(7), W - px, vb(8)); }
-  for (const i of [2, 3, 4, 5, 6, 7, 8, 9]) line(0, vb(i), W, vb(i));
-  for (let px = 0; px < W; px += 180) line(px, vb(0) + 20, px, vb(1) - 20);
-  x.fillStyle = '#d0d0d0';
-  for (let px = 430; px < 1450; px += 23) { x.fillRect(px, vb(5) + 13, 3, 3); x.fillRect(px, vb(6) - 16, 3, 3); }
+  x.strokeStyle = '#2c2c2c'; x.lineWidth = 3;
+  const line = (a, b, cc, d) => { x.beginPath(); x.moveTo(a, b); x.lineTo(cc, d); x.stroke(); };
+  if (kind === 'hull') {
+    const U = u => u / .905 * W;
+    for (const i of [1, 2, 3, 4, 5, 7, 8, 9, 10, 11]) line(0, VB[i] * H, W, VB[i] * H);
+    for (const u of [.17, .36, .44, .62, .74]) { line(U(u), VB[2] * H, U(u), VB[5] * H); line(W - 0, 0, W, 0); line(U(u), VB[7] * H, U(u), VB[10] * H); }
+    x.fillStyle = '#d0d0d0';
+    for (let u = .08; u < .45; u += .012) { x.fillRect(U(u), VB[6] * H + 8, 3, 3); x.fillRect(U(u), VB[7] * H - 10, 3, 3); }
+  } else {
+    for (const s of [.4, .62]) line(0, s * H, W / 2, s * H);
+    for (const q of [.55, .8]) line(q * W * .5, 0, q * W * .5, H);
+    x.fillStyle = '#d0d0d0';
+    for (let s = .05; s < .95; s += .03) x.fillRect(.02 * W, s * H, 3, 3);
+  }
   return c;
 }
 
@@ -166,22 +165,24 @@ function paintCarbon() {
 
 export async function applyLivery(root, renderer) {
   try { await document.fonts.ready; } catch (e) { /* fonts optional */ }
-  const tex = canvas => {
+  const aniso = renderer.capabilities.getMaxAnisotropy();
+  const tex = (canvas, srgb = true) => {
     const t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace; t.flipY = false;
-    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.flipY = false; t.anisotropy = aniso;
     return t;
   };
-  const hull = tex(paintHull()), panel = tex(paintPanel());
-  const bump = new THREE.CanvasTexture(paintBump()); bump.flipY = false;
+  const hull = tex(paintHull()), wing = tex(paintWing());
+  const hullBump = tex(paintBump('hull'), false), wingBump = tex(paintBump('wing'), false);
   const carbon = tex(paintCarbon()); carbon.wrapS = carbon.wrapT = THREE.RepeatWrapping; carbon.repeat.set(10, 10);
   root.traverse(o => {
     if (!o.isMesh) return;
-    const mats = Array.isArray(o.material) ? o.material : [o.material];
-    mats.forEach(m => {
-      if (m.name === 'fsr_livery') { m.map = hull; m.bumpMap = bump; m.bumpScale = 3; m.color.set(0xffffff); m.needsUpdate = true; }
-      if (m.name === 'fsr_carbon') { m.map = carbon; m.color.set(0xffffff); m.needsUpdate = true; }
-      if (m.name === 'fsr_panel') { m.map = panel; m.color.set(0xffffff); m.needsUpdate = true; }
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+      if (m.name === 'fsr_livery') { m.map = hull; m.bumpMap = hullBump; m.bumpScale = 3; m.color.set(0xffffff); }
+      else if (m.name === 'fsr_wing') { m.map = wing; m.bumpMap = wingBump; m.bumpScale = 3; m.color.set(0xffffff); }
+      else if (m.name === 'fsr_carbon') { m.map = carbon; m.color.set(0xffffff); }
+      else return;
+      m.needsUpdate = true;
     });
   });
 }

@@ -206,15 +206,13 @@ function patchReveal(m) {
 
 // exploded-view offsets by part name
 const EXPLODE = [
-  [/^canopy/, [0, 1.9, .2]], [/^cockpit/, [0, .95, .9]],
-  [/^intake/, [0, 2.6, -.2]], [/^antenna/, [0, 3.3, -.5]], [/^cowl/, [0, 1.3, -.7]],
-  [/^airbrake_R/, [1.5, 1.5, -.3]], [/^airbrake_L/, [-1.5, 1.5, -.3]],
-  [/^panel_R/, [1.9, -.3, -.7]], [/^panel_L/, [-1.9, -.3, -.7]],
-  [/^pod_R/, [2.7, -.2, -.6]], [/^pod_L/, [-2.7, -.2, -.6]],
-  [/^thruster/, [0, -.9, -2.2]], [/^under/, [0, -.25, 0]],
-  [/^ag_R/, [.6, -1.8, 0]], [/^ag_L/, [-.6, -1.8, 0]],
-  [/^skirt_R/, [1.4, -1.1, .9]], [/^skirt_L/, [-1.4, -1.1, .9]],
-  [/^vents_R/, [1.1, .4, 1.3]], [/^vents_L/, [-1.1, .4, 1.3]],
+  [/^canopy/, [0, 1.9, .3]], [/^cockpit/, [0, 1.0, .7]], [/^fairing/, [0, 1.5, -.3]], [/^antenna/, [0, 2.5, -.4]],
+  [/^wing_R/, [1.5, -.15, -.2]], [/^wing_L/, [-1.5, -.15, -.2]],
+  [/^grille_R/, [2.2, .7, -.1]], [/^grille_L/, [-2.2, .7, -.1]],
+  [/^thrusters_R/, [2.1, -.9, -1.1]], [/^thrusters_L/, [-2.1, -.9, -1.1]],
+  [/^airbrake_R/, [2.5, .4, -1.3]], [/^airbrake_L/, [-2.5, .4, -1.3]],
+  [/^turbines/, [0, 1.9, -1.3]], [/^engines/, [0, -.3, -2.4]],
+  [/^ag_R/, [.5, -1.7, 0]], [/^ag_L/, [-.5, -1.7, 0]],
 ];
 
 new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
@@ -226,7 +224,7 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   [...root.children].forEach(node => {
     const rule = EXPLODE.find(([re]) => re.test(node.name));
     parts.push({ node, base: node.position.clone(), off: new THREE.Vector3(...(rule ? rule[1] : [0, 0, 0])) });
-    if (/^airbrake_/.test(node.name)) airbrakes[node.name.slice(-1)] = node;
+    if (/^airbrake_/.test(node.name)) { airbrakes[node.name.slice(-1)] = node; node.userData.q0 = node.quaternion.clone(); }
     box.setFromObject(node);
     anchors[node.name] = box.getCenter(new THREE.Vector3());
   });
@@ -244,10 +242,10 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   const plume = (x, y, r, len) => {
     const g = new THREE.ConeGeometry(r, len, 32, 1, true); g.translate(0, len / 2, 0);
     const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: glowColor(.4, 1.3, 2.4), transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, y, -3.26);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, -2.84);
     ship.add(m); plumes.push(m);
   };
-  plume(0, .06, .26, 2.6); plume(.78, .08, .09, 1.4); plume(-.78, .08, .09, 1.4);
+  plume(.24, .08, .17, 2.4); plume(-.24, .08, .17, 2.4);
   shipReady = true;
   window.dispatchEvent(new Event('feisar:model-ready'));
 }, undefined, err => console.error('FEISAR model failed to load', err));
@@ -382,7 +380,7 @@ function buildTrack() {
 /* ---------------- DOM hooks ---------------- */
 const zones = [...document.querySelectorAll('[data-zone]')];
 const callouts = [...document.querySelectorAll('.callout')];
-const calloutAnch = [new THREE.Vector3(0, .9, -.9), new THREE.Vector3(0, .06, -3.2), new THREE.Vector3(.48, .6, -2.5), new THREE.Vector3(.4, -.37, 1.2)];
+const calloutAnch = [new THREE.Vector3(0, 1.0, .5), new THREE.Vector3(.24, .08, -2.8), new THREE.Vector3(1.75, -.3, -2.7), new THREE.Vector3(.35, -.42, 1.6)];
 const calloutWin = [[.2, .4], [.25, .42], [.46, .56], [.56, .66]];
 const stories = [...document.querySelectorAll('.story')];
 const storyWin = [[.2, .42], [.46, .66], [.72, .94]];
@@ -436,13 +434,17 @@ function zoneProgress(el) {
   return { r, p: clamp(-r.top / (total || 1), 0, 1) };
 }
 
+const qHinge = new THREE.Quaternion(), xAxis = new THREE.Vector3(1, 0, 0);
 function setBrakes(l, r) {
-  if (airbrakes.R) airbrakes.R.rotation.y = lerp(airbrakes.R.rotation.y, -r, .15);
-  if (airbrakes.L) airbrakes.L.rotation.y = lerp(airbrakes.L.rotation.y, l, .15);
+  for (const [k, v] of [['L', l], ['R', r]]) {
+    const n = airbrakes[k]; if (!n) continue;
+    n.userData.a = lerp(n.userData.a || 0, v * .9, .15);
+    n.quaternion.copy(n.userData.q0).multiply(qHinge.setFromAxisAngle(xAxis, n.userData.a));
+  }
 }
 
 function explode(e) {
-  for (const pt of parts) pt.node.position.copy(pt.base).addScaledVector(pt.off, e);
+  for (const pt of parts) pt.node.position.copy(pt.base).addScaledVector(pt.off, e * 1.35);
 }
 
 function project(v) {
@@ -595,11 +597,11 @@ function frame(now) {
     const e = smooth(.1, .38, P) * (1 - smooth(.86, .98, P));
     explode(e);
     WIRE_ALL.value = e * .55;
-    const az = .55 + P * 1.3 + mouse.sx * .3, el = .52 + mouse.sy * .1, dist = 23 * (W < 700 ? 1.6 : 1);
+    const az = .55 + P * 1.3 + mouse.sx * .3, el = .48 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.6 : 1);
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;
-    camera.setViewOffset(W, H, wide ? -W * .08 : 0, wide ? 0 : -H * .12, W, H);
+    camera.setViewOffset(W, H, wide ? -W * .16 : 0, wide ? 0 : -H * .12, W, H);
     camera.updateProjectionMatrix();
     shipRoot.position.set(0, Math.sin(t * 1.5) * .06, 0);
     shipRoot.rotation.set(0, 0, 0);
@@ -612,7 +614,7 @@ function frame(now) {
     engLabels.forEach((lab, i) => {
       const part = parts.find(pt => pt.node.name === lab.dataset.part);
       if (!part) return;
-      tmp2.copy(anchors[part.node.name]).addScaledVector(part.off, e).applyMatrix4(ship.matrixWorld);
+      tmp2.copy(anchors[part.node.name]).addScaledVector(part.off, e * 1.35).applyMatrix4(ship.matrixWorld);
       const [x, y] = project(tmp2);
       const o = smooth(.3 + i * .015, .45 + i * .015, P) * (1 - smooth(.82, .88, P));
       lab.style.opacity = o;
