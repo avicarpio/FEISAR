@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FEISAR — Strength in Unity</title>
+  <meta name="description" content="FEISAR anti-gravity racing craft — Federal European Industrial Science and Research. Unofficial Wipeout fan site.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Saira:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230047bb'/%3E%3Cpath d='M18 14h30l-4 8H27l-2 6h15l-4 8H22l-5 14H8z' fill='%23ffcc00'/%3E%3C/svg%3E">
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body class="is-loading">
+
+  <!-- ============ BOOT ============ -->
+  <div class="boot" id="boot" aria-hidden="true">
+    <div class="boot__grid"></div>
+    <div class="boot__inner">
+      <svg class="boot__stars" viewBox="0 0 200 200"><g id="bootRing"></g></svg>
+      <div class="boot__brand">FEISAR</div>
+      <div class="boot__jp">FEDERAL EUROPEAN INDUSTRIAL SCIENCE AND RESEARCH</div>
+      <div class="boot__log" id="bootLog"></div>
+      <div class="boot__bar"><span id="bootBar"></span></div>
+      <div class="boot__row"><span>AG-SYS FEDERAL BUILD 2207</span><span id="bootPct">000%</span></div>
+    </div>
+    <div class="boot__wipe"></div>
+  </div>
+
+  <!-- ============ CURSOR / HUD ============ -->
+  <div class="cursor" id="cursor"><span></span></div>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <div class="hud" id="hud" aria-hidden="true">
+    <div class="hud__speed"><b id="hudSpeed">0000</b><small>KM/H</small></div>
+    <div class="hud__bar"><span id="hudBar"></span></div>
+    <div class="hud__meta"><span>SECTOR <b id="hudSector">01</b>/08</span><span class="ok">● AG-FIELD NOMINAL</span></div>
+  </div>
+  <div class="progress" aria-hidden="true"><span id="progress"></span></div>
+
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <a href="#top" class="nav__logo" aria-label="FEISAR home">
+      <svg viewBox="0 0 64 64" class="nav__mark"><use href="#feisar-mark"/></svg>
+      <span class="nav__word">FEISAR</span>
+      <span class="nav__jp">EST. 2036</span>
+    </a>
+    <nav class="nav__links" id="navLinks">
+      <a href="#unity" data-n="01">Federation</a>
+      <a href="#fleet" data-n="02">Fleet</a>
+      <a href="#spec" data-n="03">Spec sheet</a>
+      <a href="#heritage" data-n="04">Heritage</a>
+      <a href="#network" data-n="05">Europe</a>
+      <a href="#research" data-n="06">Research</a>
+      <a href="#investors" data-n="07">Investors</a>
+    </nav>
+    <a href="#acquire" class="btn btn--blue btn--sm magnetic"><span>Acquire a craft</span><i class="chev">›</i></a>
+    <button class="nav__burger" id="burger" aria-label="Menu"><i></i><i></i></button>
+  </header>
+
+  <main id="top">
+
+    <!-- ============ HERO (pinned 3D) ============ -->
+    <section class="hero" id="hero" data-sector="1">
+      <div class="hero__stage">
+        <div class="hero__bgtype" aria-hidden="true"><span>FEISAR</span></div>
+        <canvas id="three" class="hero__canvas"></canvas>
+
+        <div class="hero__content" id="heroContent">
+          <div class="hero__eyebrow reveal-line">
+            <span class="tag">EST. 2036 · EUROPEAN FEDERATION</span>
+            <span class="mono">ANTI-GRAVITY RACING DIVISION</span>
+          </div>
+          <h1 class="hero__title">
+            <span class="hero__row"><span class="split" data-split>STRENGTH</span></span>
+            <span class="hero__row"><span class="split" data-split>IN</span> <em class="split" data-split>UNITY.</em></span>
+          </h1>
+          <p class="hero__lead reveal-line">
+            Anti-gravity racing craft engineered by every member state of the European Federation.
+            Legendary handling. Uncompromising shields. Now offered to licensed teams.
+          </p>
+          <div class="hero__cta reveal-line">
+            <a href="#fleet" class="btn btn--blue magnetic"><span>Explore the fleet</span><i class="chev">›</i></a>
+            <a href="#spec" class="btn btn--line magnetic"><span>Technical data</span></a>
+          </div>
+        </div>
+
+        <!-- scroll-story callouts (positioned by 3D projection) -->
+        <div class="callout" data-callout="0"><i></i><div><b>Pilot cell · Tru-Fly™ core</b><span>Enhanced stability core · T. Debenham</span></div></div>
+        <div class="callout" data-callout="1"><i></i><div><b>Main thrust chamber</b><span>FX350 rating · thrust 8 / 10</span></div></div>
+        <div class="callout" data-callout="2"><i></i><div><b>Hyper-dynamic airbrakes</b><span>FX350 rating · handling 10 / 10</span></div></div>
+        <div class="callout" data-callout="3"><i></i><div><b>AG field emitters</b><span>FX350 rating · shield 8 / 10</span></div></div>
+
+        <div class="hero__story" id="heroStory" aria-hidden="true">
+          <div class="story" data-story="1"><span class="mono">01 — HANDLING</span><h3>Corners are<br>where we win.</h3></div>
+          <div class="story" data-story="2"><span class="mono">02 — ENDURANCE</span><h3>Built to<br>finish.</h3></div>
+          <div class="story" data-story="3"><span class="mono">03 — LAUNCH</span><h3>Faster. Fitter.<br><em>FEISAR.</em></h3></div>
+        </div>
+
+        <div class="hero__readout mono">
+          <div><span>VELOCITY</span><b id="roVel">0</b></div>
+          <div><span>FIELD</span><b id="roFld">0</b></div>
+          <div><span>CAM</span><b id="roCam">A-01</b></div>
+        </div>
+        <div class="hero__side mono"><span>LAT 44.4949° N</span><span>LON 11.3426° E</span><span class="live">● OPERATIONAL HQ — BOLOGNA</span></div>
+        <div class="hero__scroll mono"><span>SCROLL TO LAUNCH</span><i></i></div>
+      </div>
+    </section>
+
+    <!-- ============ TICKER ============ -->
+    <div class="ticker" aria-hidden="true">
+      <div class="ticker__row ticker__row--yellow">
+        <div class="ticker__track" data-marquee="1">
+          <span>STRENGTH IN UNITY</span><b>★</b><span>THE FUTURE IS EURO</span><b>★</b><span>RACE FOR E-UNITY</span><b>★</b>
+          <span>FASTER / FITTER / FEISAR!</span><b>★</b><span>JOIN WITH US</span><b>★</b><span>THE MUSCLES BEHIND BRUSSELS</span><b>★</b>
+          <span>euro COMMUNITY</span><b>★</b>
+        </div>
+      </div>
+      <div class="ticker__row ticker__row--blue">
+        <div class="ticker__track" data-marquee="-1">
+          <span>FSR.EU 2,418.60 ▲ 1.82%</span><i>/</i><span>2164 AG RACING LEAGUE CHAMPIONS</span><i>/</i>
+          <span>FX350 FURY NOW SHIPPING</span><i>/</i><span>12 HEADQUARTERS · 1 FEDERATION</span><i>/</i>
+          <span>EVERY GAME · EVERY LEAGUE · SINCE 2048</span><i>/</i>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ UNITY / MISSION ============ -->
+    <section class="unity" id="unity" data-sector="2">
+      <div class="wrap">
+        <div class="unity__grid">
+          <div>
+            <span class="section-num">01 / The federation</span>
+            <h2 class="h2"><span class="scramble">Europe's</span><br><span class="scramble hl">anti-gravity</span><br><span class="scramble">agency.</span></h2>
+          </div>
+          <div class="unity__text">
+            <p class="lead reveal">When the Foundation for European Anti-Gravity Research closed in 2042, a continent was left without a voice in the sky. FEISAR answered.</p>
+            <p class="reveal" style="--d:1">Established in 2036 and designated Europe's primary anti-gravity research agency, FEISAR is funded by the member states of the European Federation. Every chassis we build carries components from every one of them.</p>
+            <p class="reveal" style="--d:2">We have never chased top speed. We engineer <strong>control</strong> — the kind that turns rookies into champions and has earned FEISAR the most loyal following in anti-gravity racing.</p>
+          </div>
+        </div>
+
+        <div class="unity__band">
+          <div class="unity__ring reveal" data-tilt>
+            <div class="unity__ring-inner">
+              <svg viewBox="0 0 220 220"><g class="ring-rot" id="unityRing"></g><g class="ring-rot ring-rot--rev" id="unityCodes"></g></svg>
+              <div class="unity__ring-label"><b>12</b><span class="mono">STARS · 12 HQ · ONE TEAM</span></div>
+            </div>
+          </div>
+          <div class="values">
+            <article class="value reveal" style="--d:0"><span class="value__n mono">I</span><h3>Handling first</h3><p>Every FEISAR since the LS-5600 has led its league in manoeuvrability. Minimal airbrake, maximum confidence.</p></article>
+            <article class="value reveal" style="--d:1"><span class="value__n mono">II</span><h3>Public science</h3><p>Funded by the Federation, returned to the Federation. Racing pays for research; research wins races.</p></article>
+            <article class="value reveal" style="--d:2"><span class="value__n mono">III</span><h3>Durability</h3><p>Among the strongest shields on every grid. FEISAR craft are built to finish — and to bring pilots home.</p></article>
+            <article class="value reveal" style="--d:3"><span class="value__n mono">IV</span><h3>E-Unity</h3><p>Designed in Bologna, assembled from parts supplied by every member state. One livery: blue, yellow and white.</p></article>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FLEET (horizontal) ============ -->
+    <section class="fleet" id="fleet" data-sector="3">
+      <div class="fleet__pin" id="fleetPin">
+        <div class="fleet__head wrap">
+          <div>
+            <span class="section-num">02 / The fleet · AGRC 2048 → FX400 2207</span>
+            <h2 class="h2"><span class="scramble">Every FEISAR</span> <span class="scramble hl">ever raced.</span></h2>
+          </div>
+          <div class="fleet__meta">
+            <div class="fleet__count mono"><b id="fleetIdx">01</b> / <span id="fleetTotal">11</span></div>
+            <div class="fleet__progress"><span id="fleetProg"></span></div>
+          </div>
+        </div>
+        <div class="fleet__track" id="fleetTrack"></div>
+        <div class="fleet__bgtype" aria-hidden="true">AG-SYSTEMS FEDERAL FLEET</div>
+      </div>
+    </section>
+
+    <!-- ============ SPEC SHEET ============ -->
+    <section class="spec" id="spec" data-sector="4">
+      <div class="wrap">
+        <div class="spec__head">
+          <div>
+            <span class="section-num">03 / Spec sheet</span>
+            <h2 class="h2"><span class="scramble">Technical</span> <span class="scramble hl">data.</span></h2>
+          </div>
+          <div class="spec__tabs" id="specTabs"></div>
+        </div>
+
+        <div class="spec__body">
+          <div class="spec__viewer" id="specViewer" data-tilt-soft>
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <div class="spec__blueprint"></div>
+            <div class="spec__rings"><i></i><i></i><i></i></div>
+            <div class="spec__img" id="specImg"></div>
+            <div class="spec__scan"></div>
+            <div class="spec__id mono"><span id="specCode">FX350</span><span id="specLeague">FX350 LEAGUE</span></div>
+            <div class="spec__game mono" id="specGame">WIPEOUT HD</div>
+            <div class="spec__dims mono" id="specDims"></div>
+          </div>
+
+          <div class="spec__panel">
+            <div class="spec__name" id="specName">FEISAR</div>
+            <p class="spec__desc" id="specDesc"></p>
+            <div class="spec__block">
+              <div class="spec__label mono">Performance · original league rating</div>
+              <div class="stats" id="specStats"></div>
+            </div>
+            <div class="spec__block">
+              <div class="spec__label mono">Systems</div>
+              <dl class="spec__tech" id="specTech"></dl>
+            </div>
+            <div class="spec__block spec__pilots">
+              <div class="spec__label mono">Pilots</div>
+              <div id="specPilots"></div>
+            </div>
+            <div class="spec__total">
+              <div><div class="mono dim">List price · excl. VAT</div><div class="price" id="specPrice">€ 0</div></div>
+              <a href="#acquire" class="btn btn--yellow magnetic" id="specCta"><span>Reserve this craft</span><i class="chev">›</i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATEMENT (FX400) ============ -->
+    <section class="statement">
+      <div class="statement__bg parallax" data-speed="-.15" aria-hidden="true">E-UNITY</div>
+      <div class="wrap statement__wrap">
+        <span class="section-num section-num--light">Statement · Bologna, Italy · 2207</span>
+        <blockquote class="statement__quote reveal">
+          “This project has been driven by Italian passion, yet the components for the new chassis have come from
+          <em>throughout the European member states.</em>”
+        </blockquote>
+        <div class="statement__by reveal" style="--d:1"><b>Pippo Ancelotti</b><span class="mono">FEISAR Delegate · Operational HQ 2207</span></div>
+      </div>
+    </section>
+
+    <!-- ============ HERITAGE ============ -->
+    <section class="heritage" id="heritage" data-sector="5">
+      <div class="wrap">
+        <div class="section-head--split">
+          <div>
+            <span class="section-num">04 / Heritage</span>
+            <h2 class="h2"><span class="scramble">Two centuries</span><br><span class="scramble hl">of pride.</span></h2>
+          </div>
+          <p class="reveal">The only team on the starting grid of every anti-gravity league ever held. Our story is not one of easy victories — it is one of persistence.</p>
+        </div>
+        <div class="tl" id="tl">
+          <div class="tl__line"><span id="tlFill"></span></div>
+          <div class="tl__item reveal"><b>2017</b><h4>The Foundation</h4><p>The Foundation for European Anti-Gravity Research is born — FEISAR's predecessor.</p></div>
+          <div class="tl__item reveal"><b>2035</b><h4>First flight</h4><p>Director Pierre Belmondo pilots the world's first anti-gravity craft in the Nevada desert.</p></div>
+          <div class="tl__item reveal"><b>2036</b><h4>FEISAR founded</h4><p>Federal European Industrial Science and Research is established by the European Federation.</p></div>
+          <div class="tl__item reveal"><b>2048</b><h4>AGRC</h4><p>Speed, Agility, Fighter and Prototype craft compete in the Anti-Gravity Racing Championship.</p></div>
+          <div class="tl__item reveal"><b>2052</b><h4>F3600</h4><p>The LS-5600 Mk.IV debuts with twin side-mounted Syrus engines and quad fins.</p></div>
+          <div class="tl__item reveal"><b>2097</b><h4>F5000</h4><p>"Excellent turning ability and easy to control" — the benchmark beginner craft.</p></div>
+          <div class="tl__item reveal"><b>2116</b><h4>F7200</h4><p>The strongest thrust on the grid and the toughest shields of the season.</p></div>
+          <div class="tl__item reveal tl__item--gold"><b>2164</b><h4>Champions</h4><p>LS-59 and Daniel Johnson win the AG Racing League — the team's finest hour.</p></div>
+          <div class="tl__item reveal"><b>2197</b><h4>FX300</h4><p>FEISAR returns after the F9000 collapse with an agile, high-thrust chassis.</p></div>
+          <div class="tl__item reveal"><b>2207</b><h4>FX350 / FX400</h4><p>Built in Bologna. Best-handling race chassis of the FX series.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ NETWORK ============ -->
+    <section class="network" id="network" data-sector="6">
+      <div class="wrap network__wrap">
+        <div class="network__text">
+          <span class="section-num section-num--light">05 / Twelve headquarters</span>
+          <h2 class="h2"><span class="scramble">One star</span><br><span class="scramble hl">per city.</span></h2>
+          <p class="reveal">FEISAR has no single home. By federal charter the team rotates between twelve headquarters across the member states — one for every star of the Federation. Operational HQ for 2207: <strong>Bologna</strong>.</p>
+          <ul class="sites" id="sitesList"></ul>
+        </div>
+        <div class="network__map reveal">
+          <svg viewBox="0 0 600 560" id="mapSvg" aria-label="Map of FEISAR headquarters">
+            <g id="mapDots"></g><g id="mapLinks"></g><g id="mapNodes"></g>
+          </svg>
+          <div class="map__info mono" id="mapInfo">SELECT A HEADQUARTERS</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PILOTS ============ -->
+    <section class="pilots" id="pilots">
+      <div class="wrap">
+        <div class="section-head--split">
+          <div>
+            <span class="section-num">Federal pilot academy</span>
+            <h2 class="h2"><span class="scramble">Our</span> <span class="scramble hl">pilots.</span></h2>
+          </div>
+          <p class="reveal">FEISAR is famous for one thing above all: the pilots it brings through. Many of the sport's greatest names learned to fly in a blue-and-yellow cockpit.</p>
+        </div>
+        <div class="pilots__grid" id="pilotsGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============ RESEARCH ============ -->
+    <section class="research" id="research" data-sector="7">
+      <div class="wrap">
+        <div class="section-head--split">
+          <div>
+            <span class="section-num">06 / Research &amp; investment</span>
+            <h2 class="h2"><span class="scramble">Every euro</span><br><span class="scramble hl">flies further.</span></h2>
+          </div>
+          <p class="reveal">Like Europe's great space agencies, FEISAR runs on member-state contributions and returns them as contracts, jobs and knowledge. Our geo-return charter guarantees every nation gets back what it invests.</p>
+        </div>
+
+        <div class="counters">
+          <div class="counter reveal" style="--d:0"><b data-count="184" data-prefix="€" data-suffix="bn">0</b><span>Cumulative research investment</span></div>
+          <div class="counter reveal" style="--d:1"><b data-count="4.2" data-decimals="1" data-prefix="×">0</b><span>Return per euro invested</span></div>
+          <div class="counter reveal" style="--d:2"><b data-count="1572" data-suffix=" km/h">0</b><span>LS-59 top speed, fully upgraded</span></div>
+          <div class="counter reveal" style="--d:3"><b data-count="171">0</b><span>Years on the grid</span></div>
+        </div>
+
+        <div class="research__grid">
+          <div class="chart reveal">
+            <div class="chart__head"><span class="mono">Annual R&amp;D budget · € bn</span><span class="mono dim">2197 → 2207</span></div>
+            <div class="chart__bars" id="chartBars"></div>
+          </div>
+          <div class="directorates">
+            <div class="dir reveal" style="--d:0"><span class="dir__code mono">TRU-FLY™</span><div><h4>Stability Core</h4><p>Enhanced stability core by First Engineer Thomas Debenham.</p></div><span class="dir__arrow">→</span></div>
+            <div class="dir reveal" style="--d:1"><span class="dir__code mono">RAMJET</span><div><h4>1800 RamJet Special™</h4><p>The powerplant behind the championship-winning LS-59.</p></div><span class="dir__arrow">→</span></div>
+            <div class="dir reveal" style="--d:2"><span class="dir__code mono">LEVITRON</span><div><h4>V100 Stabilisers</h4><p>Levitron Technology Corp. field stabilisation.</p></div><span class="dir__arrow">→</span></div>
+            <div class="dir reveal" style="--d:3"><span class="dir__code mono">ARMACALL</span><div><h4>Weapons Control VII</h4><p>From the FEISAR 4 Armacall Computer to today's systems.</p></div><span class="dir__arrow">→</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ INVESTORS ============ -->
+    <section class="investors" id="investors" data-sector="8">
+      <div class="wrap">
+        <div class="section-head--split">
+          <div>
+            <span class="section-num">07 / Investor relations</span>
+            <h2 class="h2"><span class="scramble">Invest in</span> <span class="scramble hl">velocity.</span></h2>
+          </div>
+          <p class="reveal">FEISAR Federal Bonds and FSR.EU equity let European citizens own a share of the future. Returns reinvested in fundamental research since 2036.</p>
+        </div>
+        <div class="stock reveal">
+          <div class="stock__head">
+            <div>
+              <div class="mono dim">FSR.EU · Euronext Federal</div>
+              <div class="stock__price"><span id="stockPrice">2,418.60</span> <small id="stockDelta" class="up">▲ 1.82%</small></div>
+            </div>
+            <div class="stock__tabs mono"><button class="on">1D</button><button>1M</button><button>1Y</button><button>MAX</button></div>
+          </div>
+          <canvas id="stockCanvas"></canvas>
+        </div>
+        <div class="ir-grid">
+          <div class="ir reveal" style="--d:0"><span class="mono dim">Revenue 2206</span><b>€ 38.4 bn</b><i class="up">▲ 9.1%</i></div>
+          <div class="ir reveal" style="--d:1"><span class="mono dim">Craft delivered</span><b>412</b><i class="up">▲ 22%</i></div>
+          <div class="ir reveal" style="--d:2"><span class="mono dim">R&amp;D / revenue</span><b>31%</b><i class="up">Industry high</i></div>
+          <div class="ir reveal" style="--d:3"><span class="mono dim">Credit rating</span><b>AAA</b><i>Stable</i></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ACQUIRE ============ -->
+    <section class="acquire" id="acquire">
+      <div class="acquire__stripes" aria-hidden="true"></div>
+      <div class="wrap acquire__wrap">
+        <div>
+          <span class="section-num section-num--light">08 / Acquisition</span>
+          <h2 class="h2 h2--xl"><span class="scramble">Join</span><br><span class="scramble hl">with us.</span></h2>
+          <p class="reveal">Requests are reviewed by the Directorate of Racing Programmes. A pilot licence (Venom class or above) is required. Delivery from Bologna within 18 weeks.</p>
+        </div>
+        <form class="form reveal" id="acqForm" autocomplete="off">
+          <div class="form__row"><label><span class="mono">Team / organisation</span><input required name="team" placeholder="e.g. Velocity Racing Team"></label></div>
+          <div class="form__row form__row--2">
+            <label><span class="mono">Pilot</span><input required name="pilot" placeholder="Full name"></label>
+            <label><span class="mono">Speed class</span><select name="league"><option>Venom</option><option>Flash</option><option selected>Rapier</option><option>Phantom</option></select></label>
+          </div>
+          <div class="form__row"><label><span class="mono">Craft</span><select name="craft" id="formCraft"></select></label></div>
+          <button class="btn btn--blue btn--block magnetic" type="submit"><span>Transmit request</span><i class="chev">›</i></button>
+          <p class="form__note mono">Fan simulation — nothing is sent anywhere.</p>
+          <div class="form__ok" id="formOk">
+            <svg viewBox="0 0 200 200" class="form__ok-ring"><g id="okRing"></g></svg>
+            <div class="mono">Transmission received</div>
+            <b id="formRef">FSR-0000</b>
+            <p>Welcome to the federation. A FEISAR liaison officer will contact your team.</p>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="footer__marquee" aria-hidden="true"><div class="ticker__track" data-marquee="1.2"><span>FEISAR</span><span>STRENGTH IN UNITY</span><span>FEISAR</span><span>RACE FOR E-UNITY</span></div></div>
+    <div class="wrap footer__grid">
+      <div class="footer__brand">
+        <svg viewBox="0 0 64 64" class="footer__mark"><use href="#feisar-mark"/></svg>
+        <p class="mono dim">Federal European Industrial Science and Research<br>Operational HQ 2207 · Bologna · European Federation</p>
+      </div>
+      <div class="footer__cols">
+        <div><h5 class="mono">Fleet</h5><a href="#fleet">AGRC 2048</a><a href="#fleet">F3600 — F9000</a><a href="#fleet">FX300 — FX400</a><a href="#spec">Spec sheet</a></div>
+        <div><h5 class="mono">Federation</h5><a href="#unity">About</a><a href="#heritage">Heritage</a><a href="#network">Headquarters</a><a href="#investors">Investors</a></div>
+      </div>
+    </div>
+
+    <div class="wrap disclaimer">
+      <div class="disclaimer__tag mono">⚠ Unofficial fan site</div>
+      <p>
+        <strong>This is a non-commercial fan site and is not related to Wipeout in any way.</strong>
+        It is not affiliated with, sponsored or endorsed by Sony Interactive Entertainment, Psygnosis, SCE Studio Liverpool,
+        The Designers Republic or any owner of the <em>Wipeout</em> franchise, nor by the European Union or the European Space Agency.
+        FEISAR, ship names, pilots, leagues, teams and ship imagery belong to their respective owners.
+      </p>
+      <p class="dim">
+        Prices, shares, investment figures, headquarters roles and forms are a fictional simulation: nothing is for sale and no data is sent anywhere.
+        Ship images and lore courtesy of the community at <a href="https://wipeout.fandom.com/wiki/FEISAR" target="_blank" rel="noopener">Wipeout Central (Fandom)</a>.
+        The 3D craft is a fan-made recreation.
+      </p>
+    </div>
+  </footer>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="feisar-mark" viewBox="0 0 64 64">
+        <rect x="1" y="1" width="62" height="62" fill="#0047bb"/>
+        <path d="M18 14h30l-4 8H27l-2 6h15l-4 8H22l-5 14H8z" fill="#ffcc00"/>
+        <path d="M44 42h12l-3 8H41z" fill="#fff"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/main.js"></script>
+  <script type="module" src="js/hero3d.js"></script>
+</body>
+</html>
