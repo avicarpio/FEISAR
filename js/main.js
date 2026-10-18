@@ -16,7 +16,8 @@
     return (n < 0 ? '-' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (f ? '.' + f : '');
   };
   const initials = name => { const w = name.split(' ').filter(x => /^[A-Z]/.test(x)); return (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); };
-  const euro = n => '<small class="cur">€</small>' + fmt(n);
+  // list prices in 2207 euros: shown in millions
+  const euro = n => '<small class="cur">€</small>' + fmt(n / 1e6, 1) + '<small class="cur"> M</small>';
   const { SHIPS, HQS, PILOTS } = window.FEISAR;
 
   /* ---------------------------------------------------------
@@ -95,7 +96,7 @@
     const boot = $('#boot'), log = $('#bootLog'), bar = $('#bootBar'), pct = $('#bootPct');
     const lines = [
       '> FEISAR AG-SYS // FEDERAL BUILD 2207',
-      '> OPERATIONAL HQ ............ BOLOGNA',
+      '> OPERATIONAL HQ ............ VÄSTERÅS',
       '> TRU-FLY™ STABILITY CORE ... ONLINE',
       '> SYRUS THRUST CHAMBERS ..... 98.2%',
       '> MEMBER STATE NODES ........ 12/12',
@@ -105,10 +106,9 @@
     const dur = REDUCED ? 300 : 2100;
     const t0 = performance.now();
     let shown = 0, finished = false;
-    const finish = (sound = false) => {
+    const finish = () => {
       if (finished) return;
       finished = true;
-      if (sound) { window.FEISAR_AUDIO.enable(); window.FEISAR_AUDIO.ignite(); }
       setTimeout(() => window.dispatchEvent(new Event('feisar:ignite')), 350);
       boot.classList.add('done');
       document.body.classList.remove('is-loading');
@@ -124,16 +124,13 @@
       while (shown < want) { const d = document.createElement('div'); d.textContent = lines[shown++]; log.appendChild(d); }
       if (p < 1) requestAnimationFrame(step); else arm();
     };
+    // the site opens by itself as soon as the bar is full and the craft is loaded
     let modelReady = false, barDone = false;
-    const arm = () => { barDone = true; if (modelReady || REDUCED) boot.classList.add('armed'); };
-    addEventListener('feisar:model-ready', () => { modelReady = true; if (barDone) boot.classList.add('armed'); });
-    setTimeout(() => { modelReady = true; if (barDone) boot.classList.add('armed'); }, 9000);
+    const arm = () => { barDone = true; if (modelReady || REDUCED) finish(); };
+    addEventListener('feisar:model-ready', () => { modelReady = true; if (barDone) finish(); });
+    setTimeout(() => { modelReady = true; if (barDone) finish(); }, 9000);
     requestAnimationFrame(step);
-    $$('#ignite button').forEach(b => b.addEventListener('click', () => finish(b.dataset.sound === '1')));
-    addEventListener('keydown', e => {
-      if (e.key === 'Escape') finish(false);
-      if (e.key === 'Enter' && boot.classList.contains('armed')) finish(true);
-    });
+    addEventListener('keydown', e => { if (e.key === 'Escape') finish(); });
   })();
 
   /* ---------------------------------------------------------
@@ -224,7 +221,7 @@
       const step = now => {
         const p = clamp((now - t0) / 800, 0, 1), e = 1 - Math.pow(1 - p, 3);
         shownPrice = lerp(from, to, e);
-        $('#specPrice').innerHTML = euro(Math.round(shownPrice / 1000) * 1000);
+        $('#specPrice').innerHTML = euro(Math.round(shownPrice / 1e5) * 1e5);
         if (p < 1) requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
@@ -469,7 +466,10 @@
   if (FINE) {
     const cur = $('#cursor'), dot = $('#cursorDot');
     let mx = innerWidth / 2, my = innerHeight / 2, cx = mx, cy = my;
-    addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; dot.style.transform = `translate(${mx}px,${my}px)`; });
+    addEventListener('pointermove', e => {
+      mx = e.clientX; my = e.clientY; dot.style.transform = `translate(${mx}px,${my}px)`;
+      if (!document.body.classList.contains('has-cursor')) { cx = mx; cy = my; document.body.classList.add('has-cursor'); }
+    });
     (function loop() {
       cx = lerp(cx, mx, .2); cy = lerp(cy, my, .2);
       cur.style.transform = `translate(${cx}px,${cy}px)`;
@@ -592,23 +592,6 @@
     else { tlFill.style.height = tp * 100 + '%'; tlFill.style.width = ''; }
   };
   requestAnimationFrame(tick);
-
-  /* ---------------------------------------------------------
-     SOUND TOGGLE + UI BLIPS
-     --------------------------------------------------------- */
-  const soundBtn = $('#soundBtn');
-  soundBtn.addEventListener('click', () => window.FEISAR_AUDIO.toggle());
-  addEventListener('feisar:sound', e => {
-    soundBtn.classList.toggle('on', e.detail);
-    $('.sound__txt', soundBtn).textContent = e.detail ? 'Sound on' : 'Sound off';
-  });
-  let lastBlip = 0;
-  document.addEventListener('mouseover', e => {
-    const el = e.target.closest('a, button, .ship-card, .spec__tab, .sites li');
-    if (!el || performance.now() - lastBlip < 70) return;
-    lastBlip = performance.now();
-    window.FEISAR_AUDIO.blip(1400 + Math.random() * 900);
-  });
 
   /* ---------------------------------------------------------
      CURSOR LIGHT TRAIL

@@ -86,7 +86,10 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 .cursor.hover span { border-radius: 2px; transform: rotate(45deg) scale(.8); background: rgba(255, 204, 0, .25); border-color: var(--yellow); }
 .cursor-dot { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; background: var(--blue); border-radius: 50%; }
 @media (hover: none), (pointer: coarse) { .cursor, .cursor-dot { display: none; } }
-@media (hover: hover) and (pointer: fine) { body, a, button, label { cursor: none; } input { cursor: text; } }
+/* the custom cursor appears with the first pointer move; until then the system cursor stays visible */
+.cursor, .cursor-dot { opacity: 0; transition: opacity .3s; }
+body.has-cursor .cursor, body.has-cursor .cursor-dot { opacity: 1; }
+@media (hover: hover) and (pointer: fine) { body.has-cursor, body.has-cursor a, body.has-cursor button, body.has-cursor label { cursor: none; } input { cursor: text; } }
 
 /* ================= HUD / PROGRESS ================= */
 .progress { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 1100; pointer-events: none; }
@@ -604,31 +607,6 @@ section { position: relative; }
 main, footer { position: relative; z-index: 1; }
 .h2 { transform: skewX(var(--skew, 0deg)); transition: transform .2s linear; }
 
-/* boot ignition */
-.boot__ignite { display: flex; flex-direction: column; align-items: center; gap: 14px; margin-top: 28px; opacity: 0; transform: translateY(16px); pointer-events: none; transition: opacity .6s var(--ease), transform .8s var(--ease); }
-.boot.armed .boot__ignite { opacity: 1; transform: none; pointer-events: auto; }
-.boot.armed .boot__log, .boot.armed .boot__bar, .boot.armed .boot__row { opacity: .35; }
-.ignite-btn { position: relative; width: 128px; height: 128px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--blue); color: var(--white); box-shadow: 0 20px 60px -10px rgba(0,71,187,.6); transition: transform .5s var(--ease), background .3s; }
-.ignite-btn:hover { transform: scale(1.08); background: var(--ink); }
-.ignite-btn svg { position: absolute; inset: -12px; width: calc(100% + 24px); height: calc(100% + 24px); overflow: visible; animation: spin 6s linear infinite; }
-.ignite-btn circle { fill: none; stroke: rgba(0,71,187,.2); stroke-width: 1.5; }
-.ignite-btn circle.arc { stroke: var(--yellow); stroke-width: 3; stroke-dasharray: 60 292; stroke-linecap: round; }
-.ignite-btn b { font-family: var(--f-display); font-weight: 400; font-size: 14px; letter-spacing: .2em; padding-left: .2em; }
-.ignite-btn small { font-family: var(--f-mono); font-size: 8.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--yellow); }
-.ignite-btn::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--blue); animation: igPulse 1.8s var(--ease) infinite; }
-@keyframes igPulse { from { transform: scale(1); opacity: .8; } to { transform: scale(1.7); opacity: 0; } }
-.ignite-alt { font-family: var(--f-mono); font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line-2); padding-bottom: 3px; }
-.ignite-alt:hover { color: var(--blue); }
-
-/* sound toggle */
-.sound { display: inline-flex; align-items: center; gap: 10px; font-family: var(--f-mono); font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-2); padding: 8px 4px; }
-.sound__bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
-.sound__bars i { width: 2px; height: 3px; background: var(--blue); transition: height .3s; }
-.sound.on .sound__bars i { animation: eq .9s ease-in-out infinite; }
-.sound.on .sound__bars i:nth-child(2) { animation-delay: -.3s; } .sound.on .sound__bars i:nth-child(3) { animation-delay: -.6s; } .sound.on .sound__bars i:nth-child(4) { animation-delay: -.15s; }
-@keyframes eq { 0%, 100% { height: 3px; } 50% { height: 14px; } }
-@media (max-width: 1180px) { .sound { margin-left: auto; } .sound + .btn + .nav__burger, .nav__burger { margin-left: 0; } }
-
 /* ================= TRACK ZONE ================= */
 .track { height: 520vh; background: transparent; }
 .track__stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; pointer-events: none; }
@@ -671,9 +649,7 @@ main, footer { position: relative; z-index: 1; }
   .eng-label em { font-size: 10px; color: #fff; display: block; }
   .eng-label b, .eng-label span { display: none; } }
 @media (max-width: 1500px) { .nav__jp { display: none; } }
-.sound { white-space: nowrap; }
 @media (max-width: 700px) {
-  .sound__txt { display: none; }
   .track__hud { left: 16px; right: 16px; gap: 10px; }
   .track__hud-l, .track__hud-r { padding: 10px 12px; }
   .track__hud b { font-size: 26px; }

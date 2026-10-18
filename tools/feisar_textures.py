@@ -54,7 +54,7 @@ graded = Image.fromarray(hsv.astype(np.uint8), "HSV").convert("RGB")
 graded = graded.filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=2))
 mach_png = os.path.join(tmp, "machinery.png")
 graded.crop((S // 2, 0, S, S // 2)).save(mach_png)
-subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "feisar_livery.py"), mach_png, OUT], check=True)
+subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "feisar_livery.py"), mach_png, OUT, UVJSON], check=True)
 print("base colour done")
 
 # ---------------------------------------------------------------- normal map
@@ -99,6 +99,7 @@ orig = np.asarray(Image.open(os.path.join(TEX, "Body_normal.png")).convert("RGB"
 mq = np.zeros((S, S), np.float32)
 mq[: S // 2, S // 2:] = 1
 mq = np.asarray(Image.fromarray((mq * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(8))).astype(np.float32) / 255
+mq *= 1 - np.asarray(Image.open(os.path.join(OUT, "Body_paintmask.png")).convert("L")).astype(np.float32) / 255   # repainted faces
 orig[..., 0] *= mq
 orig[..., 1] *= mq
 orig[..., 2] = orig[..., 2] * mq + (1 - mq)

@@ -20,7 +20,6 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, v) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const win = (v, a, b, f = .05) => smooth(a - f, a + f, v) * (1 - smooth(b - f, b + f, v));
-const audio = () => window.FEISAR_AUDIO;
 
 let renderer;
 try {
@@ -199,15 +198,17 @@ function patchReveal(m) {
     sh.fragmentShader = 'uniform float uReveal; varying vec3 vRevealW;\n' + sh.fragmentShader
       .replace('void main() {', 'void main() {\n if (vRevealW.z < uReveal) discard;')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n totalEmissiveRadiance += vec3(.25, .9, 1.6) * 5. * (1. - smoothstep(0., .22, vRevealW.z - uReveal));');
+    // inside faces of the hull panels (seen once the craft is exploded): plain dark composite, no livery
+    if (m.name === 'Body') sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n if (!gl_FrontFacing) diffuseColor.rgb = vec3(.1, .11, .12);');
   };
-  m.customProgramCacheKey = () => 'reveal';
+  m.customProgramCacheKey = () => 'reveal' + (m.name === 'Body' ? '-body' : '');
   m.needsUpdate = true;
 }
 
 // exploded-view offsets by part name
 const EXPLODE = [
   [/^canopy_glass/, [0, 1.7, .3]], [/^canopy_frame/, [0, 1.25, .3]], [/^cockpit/, [0, .75, .6]],
-  [/^nose/, [0, .1, 2.1]], [/^side_R/, [1.9, .1, -.4]], [/^side_L/, [-1.9, .1, -.4]],
+  [/^nose/, [0, .1, 1.5]], [/^side_R/, [1.9, .1, -.4]], [/^side_L/, [-1.9, .1, -.4]],
   [/^rear/, [0, .3, -2.4]], [/^glow/, [0, -1.4, 0]],
 ];
 
@@ -479,7 +480,7 @@ function frame(now) {
     if (vis > best) { best = vis; zone = el; }
   }
   canvas.style.opacity = zone ? 1 : 0;
-  if (!zone || !shipReady) { audio()?.setSpeed(.15); return; }
+  if (!zone || !shipReady) return;
   const name = zone.dataset.zone;
   const { p } = zoneProgress(zone);
   pSm[name] = pSm[name] == null ? p : lerp(pSm[name], p, 1 - Math.pow(.0008, dt));
@@ -601,7 +602,7 @@ function frame(now) {
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;
-    camera.setViewOffset(W, H, wide ? -W * .1 : 0, wide ? -H * .04 : -H * .12, W, H);
+    camera.setViewOffset(W, H, wide ? -W * .05 : 0, wide ? -H * .04 : -H * .12, W, H);
     camera.updateProjectionMatrix();
     shipRoot.position.set(0, Math.sin(t * 1.5) * .06, 0);
     shipRoot.rotation.set(0, 0, 0);
@@ -618,14 +619,15 @@ function frame(now) {
       if (!part) return;
       tmp2.copy(anchors[part.node.name]).addScaledVector(part.off, e * 1.35).applyMatrix4(ship.matrixWorld);
       const [x, y] = project(tmp2);
-      const o = smooth(.3 + i * .015, .45 + i * .015, P) * (1 - smooth(.82, .88, P));
+      // one shared timing (symmetric when scrolling back up): lines draw first, then the labels fade in
+      const o = smooth(.3, .42, P) * (1 - smooth(.76, .84, P));
       items.push({ lab, x, y, o });
     });
     [...items].sort((a, b) => a.x - b.x).forEach((it, k) => { it.left = k < Math.floor(items.length / 2); });
     const colW = Math.min(W * .27, 420), gap = 58, svgParts = [];
     if (!wide) items.forEach(it => {                  // phones: numbered markers on the parts, no columns
       it.lab.classList.remove('flip');
-      it.lab.style.opacity = it.o;
+      it.lab.style.opacity = smooth(.55, 1, it.o);
       it.lab.style.transform = `translate(${it.x}px, ${it.y}px)`;
     });
     for (const left of wide ? [true, false] : []) {
@@ -638,12 +640,12 @@ function frame(now) {
         const lx = left ? Math.max(260, cx - colW) : Math.min(W - 280, cx + colW);
         const ex = lx + (left ? 34 : -34);
         it.lab.classList.toggle('flip', left);
-        it.lab.style.opacity = it.o;
+        it.lab.style.opacity = smooth(.55, 1, it.o);
         it.lab.style.transform = `translate(${lx + (left ? -6 : 6)}px, ${it.ly}px)`;
-        if (it.o > .01) {
+        if (it.o > .02) {
           const len = Math.hypot(ex - it.x, it.ly - it.y) + Math.abs(lx - ex);
           svgParts.push(`<g opacity="${Math.min(1, it.o * 1.4).toFixed(3)}"><path d="M${it.x.toFixed(1)},${it.y.toFixed(1)} L${ex.toFixed(1)},${it.ly.toFixed(1)} L${lx.toFixed(1)},${it.ly.toFixed(1)}" stroke-dasharray="${len.toFixed(0)}" stroke-dashoffset="${((1 - it.o) * len).toFixed(0)}"/>` +
-            `<circle class="halo" cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="${(9 + Math.sin(t * 3 + it.x) * 2).toFixed(1)}"/><circle cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="3.5"/></g>`);
+            `<circle class="halo" cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="${((9 + Math.sin(t * 3 + it.x) * 2) * it.o).toFixed(1)}"/><circle cx="${it.x.toFixed(1)}" cy="${it.y.toFixed(1)}" r="${(3.5 * it.o).toFixed(2)}"/></g>`);
         }
       });
     }
@@ -655,7 +657,6 @@ function frame(now) {
   fx.uniforms.uBlur.value = REDUCED ? 0 : blur;
   fx.uniforms.uAberr.value = REDUCED ? 0 : aberr;
   fx.uniforms.uFlash.value = flash;
-  audio()?.setSpeed(audioSpeed);
 
   key.position.copy(shipRoot.position).add(tmp.set(6, 12, 8));
   key.target.position.copy(shipRoot.position);

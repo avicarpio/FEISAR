@@ -11,7 +11,7 @@ window.FEISAR = (() => {
       desc: 'Sublime handling for anyone starting out in anti-gravity racing. A consummate all-rounder that catches the competition through the corners.',
       stats: [['Speed', 8, 10], ['Handling', 7, 10], ['Shield', 4, 10], ['Firepower', 6, 10]],
       tech: [['Class', 'Speed'], ['Championship', 'Anti-Gravity Racing Championship'], ['Status', 'Entry-level federal issue']],
-      pilots: ['Ami Nakajima'], price: 2950000,
+      pilots: ['Ami Nakajima'], price: 186500000,
     },
     {
       id: 'agility', code: 'AGRC-A', name: 'FEISAR Agility', league: 'AGRC', year: 2048, game: 'Wipeout 2048', cls: 'Agility class',
@@ -19,7 +19,7 @@ window.FEISAR = (() => {
       desc: 'Trades a little top-end speed for extra manoeuvrability. Hyper-dynamic airbrakes make it ideal for the most technical circuits.',
       stats: [['Speed', 5, 10], ['Handling', 9, 10], ['Shield', 6, 10], ['Firepower', 7, 10]],
       tech: [['Class', 'Agility'], ['Airbrakes', 'Hyper-dynamic'], ['Best for', 'Technical circuits · Zone']],
-      pilots: ['Ami Nakajima'], price: 3050000,
+      pilots: ['Ami Nakajima'], price: 192800000,
     },
     {
       id: 'fighter', code: 'AGRC-F', name: 'FEISAR Fighter', league: 'AGRC', year: 2048, game: 'Wipeout 2048', cls: 'Fighter class',
@@ -27,7 +27,7 @@ window.FEISAR = (() => {
       desc: 'The all-rounder FEISAR spirit with an added punch. A heavy-weapons variant — the hero craft of the AGRC era.',
       stats: [['Speed', 5, 10], ['Handling', 6, 10], ['Shield', 8, 10], ['Firepower', 8, 10]],
       tech: [['Class', 'Fighter'], ['Role', 'Heavy weapons / Combat'], ['Status', 'Hero craft, AGRC']],
-      pilots: ['Ami Nakajima'], price: 3300000,
+      pilots: ['Ami Nakajima'], price: 214000000,
     },
     {
       id: 'prototype', code: 'AGRC-P', name: 'FEISAR Prototype', league: 'AGRC', year: 2048, game: 'Wipeout 2048', cls: 'Prototype class',
@@ -43,7 +43,7 @@ window.FEISAR = (() => {
       desc: 'Twin side-mounted mid-size engines with enhanced quad fins. The slowest craft of its season — and the most powerful engine on the grid.',
       stats: [['Speed', 3, 10], ['Thrust', 8, 10], ['Handling', 10, 10], ['Shield', 3, 10]],
       tech: [['Engine', 'Syrus 2800 Mk.II'], ['Configuration', '2 × 1,400 bhp · super reheat'], ['Stabilisers', 'Pro-Am SR320'], ['Braking', 'Airflow 220 SRBS'], ['Weapons', 'FEISAR 4 Armacall Computer']],
-      pilots: ['Sofia de la Rente', 'Paul Jackson'], price: 1850000,
+      pilots: ['Sofia de la Rente', 'Paul Jackson'], price: 148900000,
     },
     {
       id: 'f5000', code: 'F5000', name: 'FEISAR F5000', league: 'F5000', year: 2097, game: 'Wipeout 2097 · Wipeout 64', cls: 'F5000 League',
@@ -51,7 +51,7 @@ window.FEISAR = (() => {
       desc: 'Excellent turning ability and easy to control. Most circuits can be flown without touching the airbrakes.',
       stats: [['Speed', 3, 10], ['Thrust', 6, 10], ['Handling', 7, 10], ['Shield', 6, 10]],
       tech: [['Aerodynamics', '7 / 10'], ['Hull', 'Single-hull design'], ['Rating', 'Beginner']],
-      pilots: ['FEISAR F5000 squad'], price: 2400000,
+      pilots: ['FEISAR F5000 squad'], price: 231600000,
     },
     {
       id: 'f7200', code: 'F7200', name: 'FEISAR F7200', league: 'F7200', year: 2116, game: 'Wipeout 3', cls: 'F7200 League',
@@ -59,7 +59,7 @@ window.FEISAR = (() => {
       desc: 'The strongest thrust of all and shields equal to the toughest on the grid. Off the mark so quickly a wall barely slows it.',
       stats: [['Speed', 1, 5], ['Thrust', 5, 5], ['Handling', 4, 5], ['Shield', 4, 5]],
       tech: [['Thrust', 'Class leading'], ['Shield', 'Joint strongest, F7200'], ['Rating', 'Beginner']],
-      pilots: ['Carlos Beneto'], price: 3100000,
+      pilots: ['Carlos Beneto'], price: 268400000,
     },
     {
       id: 'ls59', code: 'LS-59', name: 'LS-59', league: 'F9000', year: 2160, game: 'Wipeout Fusion', cls: 'F9000 League',
@@ -67,7 +67,7 @@ window.FEISAR = (() => {
       desc: 'Excellent lateral stability engineering. The craft that carried Daniel Johnson and FEISAR to the 2164 AG Racing League title.',
       stats: [['Speed', 5, 6], ['Thrust', 3, 6], ['Handling', 5, 6], ['Shield', 5, 6]],
       tech: [['Engine', '1800 RamJet Special™'], ['Stabilisers', 'Levitron Technology Corp. V100'], ['Braking', 'Air-Flow Research 44'], ['Weapons', 'Armacall VII'], ['Shield', 'Garrett VR-7'], ['Top speed', '1,062 → 1,572 km/h'], ['Mass', '1,187 kg']],
-      dims: '12.0 × 5.9 × 2.4 m', pilots: ['Daniel Johnson', 'Carlos Beneto'], price: 5900000,
+      dims: '12.0 × 5.9 × 2.4 m', pilots: ['Daniel Johnson', 'Carlos Beneto'], price: 342700000,
     },
     {
       id: 'fx300', code: 'FX300', name: 'FEISAR FX300', league: 'FX300', year: 2197, game: 'Wipeout Pure', cls: 'FX300 League',
@@ -75,15 +75,15 @@ window.FEISAR = (() => {
       desc: 'You know where you are with a FEISAR. A benchmark combination of agility and reliability, tested in late 2196.',
       stats: [['Speed', 2, 5], ['Thrust', 4, 5], ['Handling', 5, 5], ['Shield', 3, 5]],
       tech: [['Development', '2194 — 2196'], ['Chassis', 'Agile · high thrust'], ['Best for', 'Technical circuits']],
-      pilots: ['FEISAR FX300 squad'], price: 4200000,
+      pilots: ['FEISAR FX300 squad'], price: 418500000,
     },
     {
       id: 'fx350', code: 'FX350/400', name: 'FEISAR FX350', league: 'FX350 · FX400', year: 2207, game: 'Wipeout Pulse · Wipeout HD', cls: 'FX350 / FX400',
       img: IMG + 'fx350.webp', action: IMG + 'fx400.webp',
-      desc: 'Built in Bologna from components supplied by every member state. The best-handling race chassis of the FX350 and FX400 series.',
+      desc: 'Designed in Torino, engineered in Västerås, with composites from the Catalan Republic and parts from every member state. The best-handling race chassis of the FX350 and FX400 series.',
       stats: [['Speed', 7, 10], ['Thrust', 8, 10], ['Handling', 10, 10], ['Shield', 8, 10]],
-      tech: [['Development', 'Bologna, Italy'], ['Origin of parts', 'All member states'], ['Delegate', 'Pippo Ancelotti']],
-      pilots: ['Riley Webb'], price: 6800000,
+      tech: [['Design', 'Torino, Italy'], ['Engineering', 'Västerås, Sweden'], ['Composites', 'Barcelona, Catalan Republic'], ['Galactic engineer', 'Nyla Ostrander-Vey']],
+      pilots: ['Riley Webb'], price: 524000000,
     },
     {
       id: 'fury', code: 'FX350 FURY', name: 'FX350 Fury', league: 'FX350 Fury', year: 2207, game: 'Wipeout HD Fury', cls: 'Fury upgrade',
@@ -91,21 +91,21 @@ window.FEISAR = (() => {
       desc: 'A much-needed speed boost and a thrust upgrade, with the same lightning reflexes. A considerable threat on any circuit.',
       stats: [['Speed', 8, 10], ['Thrust', 8.5, 10], ['Handling', 10, 10], ['Shield', 8, 10]],
       tech: [['Upgrade', 'Fury package'], ['Speed', '+1 over FX350'], ['Thrust', '+0.5 over FX350']],
-      pilots: ['Riley Webb'], price: 7900000,
+      pilots: ['Riley Webb'], price: 611900000,
     },
   ];
 
   const HQS = [
-    { code: 'BO', city: 'Bologna', lon: 11.34, lat: 44.49, role: 'Operational HQ 2207 · FX350/400 development centre', op: true },
+    { code: 'VS', city: 'Västerås', lon: 16.54, lat: 59.61, role: 'Operational HQ 2207 · FX350/400 engineering centre', op: true },
     { code: 'BX', city: 'Brussels', lon: 4.35, lat: 50.85, role: 'Federal council liaison · "The Muscles Behind Brussels"' },
-    { code: 'BC', city: 'Barcelona', lon: 2.17, lat: 41.39, role: 'Ceramic-carbon hull materials' },
+    { code: 'BC', city: 'Barcelona', lon: 2.17, lat: 41.39, role: 'Catalan Republic · ceramic-carbon hull composites' },
     { code: 'LS', city: 'Lisbon', lon: -9.14, lat: 38.72, role: 'Pilot academy & simulation' },
     { code: 'TL', city: 'Toulouse', lon: 1.44, lat: 43.6, role: 'Thrust chamber assembly' },
     { code: 'PA', city: 'Paris', lon: 2.35, lat: 48.86, role: 'Federal finance & bonds' },
     { code: 'AM', city: 'Amsterdam', lon: 4.9, lat: 52.37, role: 'AG field physics' },
     { code: 'FR', city: 'Frankfurt', lon: 8.68, lat: 50.11, role: 'Telemetry & race operations' },
     { code: 'WI', city: 'Vienna', lon: 16.37, lat: 48.21, role: 'Stabiliser engineering' },
-    { code: 'ST', city: 'Stockholm', lon: 18.07, lat: 59.33, role: 'Cold-field endurance testing' },
+    { code: 'TO', city: 'Torino', lon: 7.69, lat: 45.07, role: 'Design studio · form, canopy and livery' },
     { code: 'WA', city: 'Warsaw', lon: 21.01, lat: 52.23, role: 'Weapons control systems' },
     { code: 'AT', city: 'Athens', lon: 23.73, lat: 37.98, role: 'Shield research' },
   ];
