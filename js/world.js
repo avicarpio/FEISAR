@@ -206,14 +206,9 @@ function patchReveal(m) {
 
 // exploded-view offsets by part name
 const EXPLODE = [
-  [/^canopy/, [0, 1.6, .2]], [/^cockpit/, [0, .9, .5]], [/^engine/, [0, 1.6, -1.2]], [/^exhausts/, [0, -.2, -2.2]],
-  [/^grille_R/, [1.0, 1.2, -.4]], [/^grille_L/, [-1.0, 1.2, -.4]],
-  [/^pod_R/, [1.6, .1, -.6]], [/^pod_L/, [-1.6, .1, -.6]],
-  [/^wing_R/, [2.2, -.5, -.3]], [/^wing_L/, [-2.2, -.5, -.3]],
-  [/^airbrake_R/, [2.6, -.2, -1.4]], [/^airbrake_L/, [-2.6, -.2, -1.4]],
-  [/^fin_R/, [1.3, 1.6, -1]], [/^fin_L/, [-1.3, 1.6, -1]],
-  [/^keel/, [0, -1.5, .6]], [/^under/, [0, -1.0, -.4]],
-  [/^ag_R/, [.6, -1.4, -.4]], [/^ag_L/, [-.6, -1.4, -.4]],
+  [/^canopy_glass/, [0, 1.7, .3]], [/^canopy_frame/, [0, 1.25, .3]], [/^cockpit/, [0, .75, .6]],
+  [/^nose/, [0, .1, 2.6]], [/^side_R/, [1.9, .1, -.4]], [/^side_L/, [-1.9, .1, -.4]],
+  [/^rear/, [0, .3, -2.4]], [/^glow/, [0, -1.4, 0]],
 ];
 
 new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
@@ -243,10 +238,10 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   const plume = (x, y, r, len) => {
     const g = new THREE.ConeGeometry(r, len, 32, 1, true); g.translate(0, len / 2, 0);
     const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: glowColor(.4, 1.3, 2.4), transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, y, -2.98);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, x === 0 ? -2.8 : -3.24);
     ship.add(m); plumes.push(m);
   };
-  plume(0, .19, .3, 2.8); plume(.81, .24, .16, 1.6); plume(-.81, .24, .16, 1.6);
+  plume(0, .43, .22, 2.6); plume(.92, .15, .2, 2.2); plume(-.92, .15, .2, 2.2);
   shipReady = true;
   window.dispatchEvent(new Event('feisar:model-ready'));
 }, undefined, err => console.error('FEISAR model failed to load', err));
@@ -381,7 +376,7 @@ function buildTrack() {
 /* ---------------- DOM hooks ---------------- */
 const zones = [...document.querySelectorAll('[data-zone]')];
 const callouts = [...document.querySelectorAll('.callout')];
-const calloutAnch = [new THREE.Vector3(0, 1.35, -.4), new THREE.Vector3(0, .19, -2.95), new THREE.Vector3(1.35, -.1, -2.95), new THREE.Vector3(0, -.75, 1.4)];
+const calloutAnch = [new THREE.Vector3(0, 1.15, .6), new THREE.Vector3(0, .43, -2.8), new THREE.Vector3(1.6, -.1, -2.4), new THREE.Vector3(0, -.42, 1.8)];
 const calloutWin = [[.2, .4], [.25, .42], [.46, .56], [.56, .66]];
 const stories = [...document.querySelectorAll('.story')];
 const storyWin = [[.2, .42], [.46, .66], [.72, .94]];

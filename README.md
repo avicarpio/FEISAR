@@ -21,22 +21,22 @@ Then open http://localhost:8097.
 
 ## 3D model
 
-The ship is built from code in Blender. To rebuild `assets/models/feisar_fx350.glb`:
+The craft is based on **"WipeOut - Feisar" by [Nobby76](https://sketchfab.com/nobbyt76)**
+([Sketchfab](https://sketchfab.com/3d-models/wipeout-feisar-74e42e2192384cccbada8486b1f0703b)),
+licensed under [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/). Changes for this site: display
+pedestal and boost effect removed, rescaled and reoriented, body split into assemblies for the exploded view,
+textures upscaled to 4K with Real-ESRGAN and re-graded, new panel/rivet normal detail.
+
+Rebuilding `assets/models/feisar_fx350.glb` from the Sketchfab download:
 
 ```bash
-flatpak run --filesystem=$PWD org.blender.Blender -b --python tools/build_feisar.py
+tools/blender-bwrap.sh -b --python tools/dump_uv.py -- assets/models/feisar_fx350.glb /tmp/uv.json
+python3 tools/feisar_textures.py <unzipped download> /tmp/uv.json <realesrgan-ncnn-vulkan dir> /tmp/hitex
+tools/blender-bwrap.sh -b --python tools/prepare_feisar.py -- <unzipped download>/scene.gltf /tmp/hitex
 ```
 
-If the Flatpak sandbox fails to start (for example because an unreachable network drive is
-mounted under `/mnt`), `tools/blender-bwrap.sh` runs the same Flatpak Blender in a minimal
-hand-built sandbox:
-
-```bash
-tools/blender-bwrap.sh -b --python tools/build_feisar.py
-```
-
-`tools/viewer.html?v=az,el,dist;az,el,dist` renders the GLB from several angles, which helps when
-comparing the model with reference images.
+`tools/build_feisar.py` (classic-style) and `tools/build_feisar_hd.py` (HD FX350) are earlier procedural
+models built from code. `tools/viewer.html?v=az,el,dist;...` renders the GLB from several angles.
 
 ## Disclaimer
 
