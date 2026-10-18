@@ -59,9 +59,9 @@ function paintHull() {
     x.beginPath(); x.moveTo(i * 36, t0); x.lineTo(i * 36 + 36, t0); x.lineTo(i * 36 + 36 + 80, t1); x.lineTo(i * 36 + 80, t1); x.fill();
   }
   x.restore();
-  bandText(x, 'race for e-unity', { cx: 260, cy: t0 + 52, size: 58, font: 'Saira, sans-serif', weight: 600, color: C.teal });
-  bandText(x, 'FEISAR', { cx: 1180, cy: (t0 + t1) / 2 + 6, size: 120, font: 'Michroma, sans-serif', color: C.sky });
-  bandText(x, 'FX350 · FEDERAL BUILD 2207 · BOLOGNA', { cx: 260, cy: t1 - 46, size: 22, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 4 });
+  bandText(x, 'race for e-unity', { cx: 260, cy: t1 - 52, size: 58, font: 'Saira, sans-serif', weight: 600, color: C.teal, flipY: true });
+  bandText(x, 'FEISAR', { cx: 1180, cy: (t0 + t1) / 2 - 6, size: 120, font: 'Michroma, sans-serif', color: C.sky, flipY: true });
+  bandText(x, 'FX350 · FEDERAL BUILD 2207 · BOLOGNA', { cx: 260, cy: t0 + 46, size: 22, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 4, flipY: true });
   // 12-star emblem
   const ex = 2420, ey = (t0 + t1) / 2;
   x.fillStyle = '#0047bb'; x.beginPath(); x.arc(ex, ey, 86, 0, 7); x.fill();
@@ -125,12 +125,42 @@ function paintPanel() {
   x.save(); x.beginPath(); x.rect(0, 0, W, 26); x.clip();
   for (let i = -2; i < 60; i++) { x.fillStyle = i % 2 ? C.ink : C.yellow; x.beginPath(); x.moveTo(i * 24, 0); x.lineTo(i * 24 + 24, 0); x.lineTo(i * 24 + 10, 26); x.lineTo(i * 24 - 14, 26); x.fill(); }
   x.restore();
-  bandText(x, '350', { cx: 470, cy: 210, size: 150, font: 'Michroma, sans-serif', color: C.ink });
-  bandText(x, 'FEISAR', { cx: 480, cy: 312, size: 46, font: 'Michroma, sans-serif', color: C.white });
-  bandText(x, 'AIRBRAKE ZONE · KEEP CLEAR', { cx: 480, cy: 345, size: 18, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 3 });
+  bandText(x, '350', { cx: 250, cy: 210, size: 150, font: 'Michroma, sans-serif', color: C.ink });
+  bandText(x, 'FEISAR', { cx: 260, cy: 312, size: 46, font: 'Michroma, sans-serif', color: C.white });
+  bandText(x, 'AIRBRAKE ZONE · KEEP CLEAR', { cx: 260, cy: 345, size: 18, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, spacing: 3 });
   x.strokeStyle = 'rgba(10,21,48,.3)'; x.lineWidth = 3;
   x.beginPath(); x.moveTo(380, 40); x.lineTo(380, H * .72); x.stroke();
   bandText(x, 'race for e-unity', { cx: 520, cy: H * .87, size: 40, font: 'Saira, sans-serif', weight: 600, color: C.white });
+  return c;
+}
+
+function paintBump() {
+  // grooves (dark) for panel lines, raised rivets (light) — same layout as paintHull
+  const W = 2048, H = 512;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#808080'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = '#303030'; x.lineWidth = 3;
+  const line = (x0, y0, x1, y1) => { x.beginPath(); x.moveTo(x0, y0); x.lineTo(x1, y1); x.stroke(); };
+  const vb = i => VB[i] * H;
+  for (const px of [410, 860, 1030, 1350]) line(px, vb(5), px, vb(6));
+  for (const px of [210, 530, 950, 1250, 1480]) { line(px, vb(3), px, vb(4)); line(W - px, vb(7), W - px, vb(8)); }
+  for (const i of [2, 3, 4, 5, 6, 7, 8, 9]) line(0, vb(i), W, vb(i));
+  for (let px = 0; px < W; px += 180) line(px, vb(0) + 20, px, vb(1) - 20);
+  x.fillStyle = '#d0d0d0';
+  for (let px = 430; px < 1450; px += 23) { x.fillRect(px, vb(5) + 13, 3, 3); x.fillRect(px, vb(6) - 16, 3, 3); }
+  return c;
+}
+
+function paintCarbon() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  for (let i = 0; i < 16; i++) for (let j = 0; j < 16; j++) {
+    const v = (i + j) % 4 < 2;
+    const g = x.createLinearGradient(i * 8, j * 8, i * 8 + (v ? 8 : 0), j * 8 + (v ? 0 : 8));
+    g.addColorStop(0, v ? '#2b3039' : '#14171c'); g.addColorStop(1, v ? '#14171c' : '#2b3039');
+    x.fillStyle = g; x.fillRect(i * 8, j * 8, 8, 8);
+  }
   return c;
 }
 
@@ -143,11 +173,14 @@ export async function applyLivery(root, renderer) {
     return t;
   };
   const hull = tex(paintHull()), panel = tex(paintPanel());
+  const bump = new THREE.CanvasTexture(paintBump()); bump.flipY = false;
+  const carbon = tex(paintCarbon()); carbon.wrapS = carbon.wrapT = THREE.RepeatWrapping; carbon.repeat.set(10, 10);
   root.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     mats.forEach(m => {
-      if (m.name === 'fsr_livery') { m.map = hull; m.color.set(0xffffff); m.needsUpdate = true; }
+      if (m.name === 'fsr_livery') { m.map = hull; m.bumpMap = bump; m.bumpScale = 3; m.color.set(0xffffff); m.needsUpdate = true; }
+      if (m.name === 'fsr_carbon') { m.map = carbon; m.color.set(0xffffff); m.needsUpdate = true; }
       if (m.name === 'fsr_panel') { m.map = panel; m.color.set(0xffffff); m.needsUpdate = true; }
     });
   });

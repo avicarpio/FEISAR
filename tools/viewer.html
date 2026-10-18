@@ -1,9 +1,10 @@
 <!doctype html><html><head><style>body{margin:0;background:#fff}canvas{display:block}</style>
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script></head><body>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}</script></head><body>
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { applyLivery } from '../js/livery.js';
 const q=new URLSearchParams(location.search);
 const views=(q.get('v')||'0.6,0.35,13').split(';').map(s=>s.split(',').map(Number));
 const W=innerWidth/views.length|0,H=innerHeight;
@@ -11,7 +12,7 @@ const r=new THREE.WebGLRenderer({antialias:true});r.setSize(innerWidth,H);r.setS
 const sc=new THREE.Scene();sc.background=new THREE.Color(0xffffff);
 sc.environment=new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(r),.03).texture;sc.environmentIntensity=.5;
 sc.add(new THREE.HemisphereLight(0xffffff,0xb9c8e0,.4));const k=new THREE.DirectionalLight(0xffffff,2.1);k.position.set(6,12,8);sc.add(k);
-new GLTFLoader().load('../assets/models/feisar_fx350.glb',g=>{sc.add(g.scene);
- views.forEach(([az,el,d],i)=>{const c=new THREE.PerspectiveCamera(28,W/H,.1,100);c.position.set(Math.sin(az)*Math.cos(el)*d,Math.sin(el)*d,Math.cos(az)*Math.cos(el)*d);c.lookAt(0,0.2,0.6);
+new GLTFLoader().load('../assets/models/feisar_fx350.glb',async g=>{await applyLivery(g.scene,r);sc.add(g.scene);
+ views.forEach(([az,el,d],i)=>{const c=new THREE.PerspectiveCamera(28,W/H,.1,100);c.position.set(Math.sin(az)*Math.cos(el)*d,Math.sin(el)*d,Math.cos(az)*Math.cos(el)*d);c.lookAt(0,0.2,0.9);
  r.setViewport(i*W,0,W,H);r.setScissor(i*W,0,W,H);r.render(sc,c);});document.title='done';});
 </script></body></html>

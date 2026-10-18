@@ -649,7 +649,7 @@ main, footer { position: relative; z-index: 1; }
 /* ================= ENGINEERING ZONE ================= */
 .eng { height: 420vh; background: transparent; }
 .eng__stage { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
-.eng__intro { position: absolute; left: var(--gutter); top: 50%; transform: translateY(-50%); max-width: 460px; z-index: 2; }
+.eng__intro { position: absolute; left: var(--gutter); top: 120px; max-width: 460px; z-index: 2; }
 .eng__intro p { color: var(--ink-2); margin-top: 22px; }
 .eng-label { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; opacity: 0; pointer-events: none; will-change: transform, opacity; }
 .eng-label i { width: 10px; height: 10px; background: var(--yellow); border: 2px solid var(--ink); transform: rotate(45deg); margin: -5px 0 0 -5px; flex: none; position: relative; }

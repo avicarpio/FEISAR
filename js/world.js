@@ -11,6 +11,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { applyLivery } from './livery.js';
 
 const canvas = document.getElementById('gl');
@@ -85,6 +86,11 @@ scene.add(key, key.target);
 const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
 const composer = new EffectComposer(renderer, rt);
 composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, 1, 1);
+gtao.output = GTAOPass.OUTPUT.Default;
+gtao.blendIntensity = .9;
+gtao.updateGtaoMaterial({ radius: .35, distanceExponent: 1.5, thickness: 1, scale: 1.2, samples: 12 });
+composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), .38, .4, 1.15);
 composer.addPass(bloom);
 const fx = new ShaderPass({
@@ -200,17 +206,15 @@ function patchReveal(m) {
 
 // exploded-view offsets by part name
 const EXPLODE = [
-  [/^pilot_/, [0, .95, .9]],
-  [/^canopy/, [0, 1.9, .2]],
-  [/^intake|^louvre|^antenna/, [0, 2.6, -.2]],
-  [/^cowl/, [0, 1.3, -.7]],
+  [/^canopy/, [0, 1.9, .2]], [/^cockpit/, [0, .95, .9]],
+  [/^intake/, [0, 2.6, -.2]], [/^antenna/, [0, 3.3, -.5]], [/^cowl/, [0, 1.3, -.7]],
   [/^airbrake_R/, [1.5, 1.5, -.3]], [/^airbrake_L/, [-1.5, 1.5, -.3]],
   [/^panel_R/, [1.9, -.3, -.7]], [/^panel_L/, [-1.9, -.3, -.7]],
-  [/^pod_.*R$|^pod_R/, [2.5, -.5, -.5]], [/^pod_.*L$|^pod_L/, [-2.5, -.5, -.5]],
-  [/^thruster/, [0, -.9, -2.2]],
-  [/^ag_pad_R/, [.6, -1.7, 0]], [/^ag_pad_L/, [-.6, -1.7, 0]],
-  [/^skirt_R|^nose_intake_R/, [1.4, -1.1, .9]], [/^skirt_L|^nose_intake_L/, [-1.4, -1.1, .9]],
-  [/^side_slot_R|^canopy_rail_R/, [1, .5, .5]], [/^side_slot_L|^canopy_rail_L/, [-1, .5, .5]],
+  [/^pod_R/, [2.7, -.2, -.6]], [/^pod_L/, [-2.7, -.2, -.6]],
+  [/^thruster/, [0, -.9, -2.2]], [/^under/, [0, -.25, 0]],
+  [/^ag_R/, [.6, -1.8, 0]], [/^ag_L/, [-.6, -1.8, 0]],
+  [/^skirt_R/, [1.4, -1.1, .9]], [/^skirt_L/, [-1.4, -1.1, .9]],
+  [/^vents_R/, [1.1, .4, 1.3]], [/^vents_L/, [-1.1, .4, 1.3]],
 ];
 
 new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
@@ -240,10 +244,10 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   const plume = (x, y, r, len) => {
     const g = new THREE.ConeGeometry(r, len, 32, 1, true); g.translate(0, len / 2, 0);
     const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: glowColor(.4, 1.3, 2.4), transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, y, -3.24);
+    m.rotation.x = -Math.PI / 2; m.position.set(x, y, -3.26);
     ship.add(m); plumes.push(m);
   };
-  plume(0, .06, .26, 2.6); plume(.76, .02, .09, 1.4); plume(-.76, .02, .09, 1.4);
+  plume(0, .06, .26, 2.6); plume(.78, .08, .09, 1.4); plume(-.78, .08, .09, 1.4);
   shipReady = true;
   window.dispatchEvent(new Event('feisar:model-ready'));
 }, undefined, err => console.error('FEISAR model failed to load', err));
@@ -396,6 +400,7 @@ const resize = () => {
   W = innerWidth; H = innerHeight;
   renderer.setSize(W, H, false);
   composer.setSize(W, H);
+  gtao.setSize(W * DPR, H * DPR);
   bloom.resolution.set(W, H);
   camera.aspect = W / H; camera.updateProjectionMatrix();
 };
@@ -571,7 +576,7 @@ function frame(now) {
     setBrakes(turn > .002 ? .9 : 0, turn < -.002 ? .9 : 0);
     plumes.forEach(pl => { pl.material.opacity = .4 * (.85 + Math.random() * .15); pl.scale.set(1, 1.4 + Math.random() * .2, 1); });
     speedAmt = .6 + Math.min(trackSpeed, 1) * .4;
-    blur = .012 + Math.min(trackSpeed, 1.2) * .025; aberr = .0004 + speedAmt * .0006;
+    blur = .012 + Math.min(trackSpeed, 1.2) * .025; aberr = .0003 + speedAmt * .0004;
     audioSpeed = .55 + Math.min(trackSpeed, 1) * .45;
     updateLines(speedAmt, dt, true);
     tWords.forEach((el, i) => {
@@ -590,11 +595,11 @@ function frame(now) {
     const e = smooth(.1, .38, P) * (1 - smooth(.86, .98, P));
     explode(e);
     WIRE_ALL.value = e * .55;
-    const az = .55 + P * 1.3 + mouse.sx * .3, el = .52 + mouse.sy * .1, dist = 21 * (W < 700 ? 1.6 : 1);
+    const az = .55 + P * 1.3 + mouse.sx * .3, el = .52 + mouse.sy * .1, dist = 23 * (W < 700 ? 1.6 : 1);
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;
-    camera.setViewOffset(W, H, wide ? -W * .16 : 0, wide ? 0 : -H * .12, W, H);
+    camera.setViewOffset(W, H, wide ? -W * .08 : 0, wide ? 0 : -H * .12, W, H);
     camera.updateProjectionMatrix();
     shipRoot.position.set(0, Math.sin(t * 1.5) * .06, 0);
     shipRoot.rotation.set(0, 0, 0);

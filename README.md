@@ -27,6 +27,14 @@ The ship is built from code in Blender. To rebuild `assets/models/feisar_fx350.g
 flatpak run --filesystem=$PWD org.blender.Blender -b --python tools/build_feisar.py
 ```
 
+If the Flatpak sandbox fails to start (for example because an unreachable network drive is
+mounted under `/mnt`), `tools/blender-bwrap.sh` runs the same Flatpak Blender in a minimal
+hand-built sandbox:
+
+```bash
+tools/blender-bwrap.sh -b --python tools/build_feisar.py
+```
+
 `tools/viewer.html?v=az,el,dist;az,el,dist` renders the GLB from several angles, which helps when
 comparing the model with reference images.
 
