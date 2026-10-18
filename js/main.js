@@ -804,7 +804,7 @@
       else holdP += dt * .5;                                       // committed: the craft launches
       if (scrubP >= .84 && performance.now() - lastWheel > 120) scrubP = Math.min(1, scrubP + dt * .5);   // scrolled to the end: launch
       const hp = Math.max(holdP, scrubP);
-      if (hp >= 1) { holdP = scrubP = 1; go('track'); }
+      if (hp >= 1) { holdP = scrubP = 1; go(cur + 1); }          // launch → the next scene, no skipping
       STAGE.p = hp; STAGE.boost = holding ? 1 : 0;
       STAGE.idle = hp < .005 && !holding && performance.now() - lastWheel > 900;   // at rest: wireframe/solid idle loop
       ringOn = holding || (holdP > .01 && holdP < .84); ringP = Math.min(1, holdP / .84); ringLabel = holdP >= .84 ? 'Launch' : 'Hold';
