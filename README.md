@@ -16,7 +16,7 @@ Science and Research — as a real European agency selling its anti-gravity raci
 Serve the folder with any static server, for example:
 
 ```bash
-python3 -m http.server 8097
+python3 tools/serve.py 8097
 ```
 
 Then open http://localhost:8097.

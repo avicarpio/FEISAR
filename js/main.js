@@ -806,7 +806,7 @@
       const hp = Math.max(holdP, scrubP);
       if (hp >= 1) { holdP = scrubP = 1; go('track'); }
       STAGE.p = hp; STAGE.boost = holding ? 1 : 0;
-      STAGE.idle = hp < .005 && !holding && performance.now() - lastWheel > 1200;   // at rest: wireframe/solid idle loop
+      STAGE.idle = hp < .005 && !holding && performance.now() - lastWheel > 900;   // at rest: wireframe/solid idle loop
       ringOn = holding || (holdP > .01 && holdP < .84); ringP = Math.min(1, holdP / .84); ringLabel = holdP >= .84 ? 'Launch' : 'Hold';
       launchpad.style.opacity = 1 - Math.min(1, hp * 8);
       meter = Math.min(1, hp / .84);

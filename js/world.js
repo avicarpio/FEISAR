@@ -507,6 +507,9 @@ function frame(now) {
   warp = Math.max(0, warp - dt * 1.6);
   mouse.sx = lerp(mouse.sx, mouse.x, .06); mouse.sy = lerp(mouse.sy, mouse.y, .06);
 
+  // ignition reveal — polled every frame (no reliance on event order): starts once the interface is open
+  // and the craft is loaded; failsafe after 12 s so the craft can never stay a hologram
+  if (igniteT < 0 && shipReady && (window.FEISAR_IGNITED || now > 12000)) ignite();
   // ignition reveal
   if (igniteT >= 0 && !revealDone) {
     igniteT = (now - igniteAt) / 1000;
@@ -524,8 +527,9 @@ function frame(now) {
   if (revealDone && shipReady) {
     const idle = ST.zone === 'hero' && ST.idle && !REDUCED;
     idleT = idle ? idleT + dt : 0;
-    const c = idleT % 9, target = idle && c > 3.6 && c < 6.8 ? 1 : 0;
-    idleMix += clamp(target - idleMix, -dt / (idle ? 1.2 : .35), dt / 1.2);
+    // 2 s solid → .6 s sweep → 2 s wireframe → .6 s sweep back
+    const c = idleT % 5.2, target = idle && c > 2 && c < 4.6 ? 1 : 0;
+    idleMix += clamp(target - idleMix, -dt / (idle ? .6 : .3), dt / .6);
     if (idleMix > .001) {
       REVEAL.value = lerp(-3.9, 5.6, idleMix);
       scanGroup.visible = idleMix < .999; scanGroup.position.z = REVEAL.value;
@@ -737,4 +741,5 @@ function updateLines(amt, dt, camSpace) {
   lines.instanceMatrix.needsUpdate = true;
 }
 
+window.FEISAR_DEBUG = () => ({ reveal: REVEAL.value, igniteT, revealDone, idleMix, shipReady, zone: ST.zone, idle: ST.idle });
 requestAnimationFrame(frame);
