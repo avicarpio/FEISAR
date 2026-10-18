@@ -105,9 +105,11 @@
     const dur = REDUCED ? 300 : 2100;
     const t0 = performance.now();
     let shown = 0, finished = false;
-    const finish = () => {
+    const finish = (sound = false) => {
       if (finished) return;
       finished = true;
+      if (sound) { window.FEISAR_AUDIO.enable(); window.FEISAR_AUDIO.ignite(); }
+      setTimeout(() => window.dispatchEvent(new Event('feisar:ignite')), 350);
       boot.classList.add('done');
       document.body.classList.remove('is-loading');
       setTimeout(() => document.body.classList.add('ready'), 450);
@@ -120,11 +122,18 @@
       pct.textContent = String(Math.round(e * 100)).padStart(3, '0') + '%';
       const want = Math.min(lines.length, Math.floor(e * lines.length + .3));
       while (shown < want) { const d = document.createElement('div'); d.textContent = lines[shown++]; log.appendChild(d); }
-      if (p < 1) requestAnimationFrame(step); else setTimeout(finish, 280);
+      if (p < 1) requestAnimationFrame(step); else arm();
     };
+    let modelReady = false, barDone = false;
+    const arm = () => { barDone = true; if (modelReady || REDUCED) boot.classList.add('armed'); };
+    addEventListener('feisar:model-ready', () => { modelReady = true; if (barDone) boot.classList.add('armed'); });
+    setTimeout(() => { modelReady = true; if (barDone) boot.classList.add('armed'); }, 9000);
     requestAnimationFrame(step);
-    boot.addEventListener('click', finish);
-    addEventListener('keydown', e => { if (e.key === 'Escape') finish(); });
+    $$('#ignite button').forEach(b => b.addEventListener('click', () => finish(b.dataset.sound === '1')));
+    addEventListener('keydown', e => {
+      if (e.key === 'Escape') finish(false);
+      if (e.key === 'Enter' && boot.classList.contains('armed')) finish(true);
+    });
   })();
 
   /* ---------------------------------------------------------
@@ -527,6 +536,7 @@
     const y = scrollY;
     const v = (y - last) / dt; last = y;
     sv = lerp(sv, v, .1);
+    document.documentElement.style.setProperty('--skew', `${clamp(sv * -.006, -9, 9).toFixed(2)}deg`);
 
     marquees.forEach(m => {
       if (!m.w) return;
@@ -582,6 +592,48 @@
     else { tlFill.style.height = tp * 100 + '%'; tlFill.style.width = ''; }
   };
   requestAnimationFrame(tick);
+
+  /* ---------------------------------------------------------
+     SOUND TOGGLE + UI BLIPS
+     --------------------------------------------------------- */
+  const soundBtn = $('#soundBtn');
+  soundBtn.addEventListener('click', () => window.FEISAR_AUDIO.toggle());
+  addEventListener('feisar:sound', e => {
+    soundBtn.classList.toggle('on', e.detail);
+    $('.sound__txt', soundBtn).textContent = e.detail ? 'Sound on' : 'Sound off';
+  });
+  let lastBlip = 0;
+  document.addEventListener('mouseover', e => {
+    const el = e.target.closest('a, button, .ship-card, .spec__tab, .sites li');
+    if (!el || performance.now() - lastBlip < 70) return;
+    lastBlip = performance.now();
+    window.FEISAR_AUDIO.blip(1400 + Math.random() * 900);
+  });
+
+  /* ---------------------------------------------------------
+     CURSOR LIGHT TRAIL
+     --------------------------------------------------------- */
+  if (FINE && !REDUCED) {
+    const tc = $('#trail'), tx = tc.getContext('2d');
+    const pts = [];
+    const size = () => { const d = Math.min(devicePixelRatio || 1, 2); tc.width = innerWidth * d; tc.height = innerHeight * d; tx.setTransform(d, 0, 0, d, 0, 0); };
+    size(); addEventListener('resize', size);
+    addEventListener('pointermove', e => pts.push({ x: e.clientX, y: e.clientY, t: performance.now() }));
+    (function draw() {
+      requestAnimationFrame(draw);
+      const now = performance.now();
+      while (pts.length && now - pts[0].t > 420) pts.shift();
+      tx.clearRect(0, 0, innerWidth, innerHeight);
+      if (pts.length < 2) return;
+      tx.lineCap = 'round';
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i], k = 1 - (now - b.t) / 420;
+        tx.strokeStyle = `rgba(${Math.round(lerp(255, 0, k))}, ${Math.round(lerp(204, 90, k))}, ${Math.round(lerp(0, 220, k))}, ${k * .85})`;
+        tx.lineWidth = 1 + k * 7;
+        tx.beginPath(); tx.moveTo(a.x, a.y); tx.lineTo(b.x, b.y); tx.stroke();
+      }
+    })();
+  }
 
   /* ---------------------------------------------------------
      FORM (simulation — nothing is transmitted)

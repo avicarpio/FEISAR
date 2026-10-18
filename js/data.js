@@ -99,15 +99,15 @@ window.FEISAR = (() => {
     { code: 'BO', city: 'Bologna', lon: 11.34, lat: 44.49, role: 'Operational HQ 2207 · FX350/400 development centre', op: true },
     { code: 'BX', city: 'Brussels', lon: 4.35, lat: 50.85, role: 'Federal council liaison · "The Muscles Behind Brussels"' },
     { code: 'BC', city: 'Barcelona', lon: 2.17, lat: 41.39, role: 'Ceramic-carbon hull materials' },
-    { code: 'LS', city: 'Lisboa', lon: -9.14, lat: 38.72, role: 'Pilot academy & simulation' },
+    { code: 'LS', city: 'Lisbon', lon: -9.14, lat: 38.72, role: 'Pilot academy & simulation' },
     { code: 'TL', city: 'Toulouse', lon: 1.44, lat: 43.6, role: 'Thrust chamber assembly' },
     { code: 'PA', city: 'Paris', lon: 2.35, lat: 48.86, role: 'Federal finance & bonds' },
     { code: 'AM', city: 'Amsterdam', lon: 4.9, lat: 52.37, role: 'AG field physics' },
     { code: 'FR', city: 'Frankfurt', lon: 8.68, lat: 50.11, role: 'Telemetry & race operations' },
-    { code: 'WI', city: 'Wien', lon: 16.37, lat: 48.21, role: 'Stabiliser engineering' },
+    { code: 'WI', city: 'Vienna', lon: 16.37, lat: 48.21, role: 'Stabiliser engineering' },
     { code: 'ST', city: 'Stockholm', lon: 18.07, lat: 59.33, role: 'Cold-field endurance testing' },
-    { code: 'WA', city: 'Warszawa', lon: 21.01, lat: 52.23, role: 'Weapons control systems' },
-    { code: 'AT', city: 'Athina', lon: 23.73, lat: 37.98, role: 'Shield research' },
+    { code: 'WA', city: 'Warsaw', lon: 21.01, lat: 52.23, role: 'Weapons control systems' },
+    { code: 'AT', city: 'Athens', lon: 23.73, lat: 37.98, role: 'Shield research' },
   ];
 
   const PILOTS = [
