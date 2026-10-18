@@ -150,7 +150,7 @@
           <div class="ship-card__art">
             ${s.champion ? '<span class="badge mono">★ 2164 champion</span>' : ''}
             ${s.price === null ? '<span class="badge mono">Prototype</span>' : ''}
-            <img src="${s.img}" alt="${s.name}" loading="lazy" referrerpolicy="no-referrer" class="${s.small ? 'small' : ''}">
+            <img src="${s.img}" alt="${s.name}" decoding="async" referrerpolicy="no-referrer" class="${s.small ? 'small' : ''}">
           </div>
           <div class="ship-card__code">${s.code} · ${s.cls}</div>
           <h3 class="ship-card__name">${s.name}</h3>
@@ -171,6 +171,7 @@
       </article>`;
     $('#fleetTotal').textContent = String(SHIPS.length).padStart(2, '0');
 
+    $('#fleet').addEventListener('scene:reset', () => $$('.ship-card[data-ship] .stat').forEach(row => { row.querySelector('i').style.setProperty('--v', 0); row.querySelector('b').textContent = '—'; }));
     $('#fleet').addEventListener('scene:enter', () => $$('.ship-card[data-ship]').forEach((card, k) => {
       const s = SHIPS[card.dataset.ship];
       $$('.stat', card).forEach((row, j) => {
@@ -363,7 +364,7 @@
     };
     resize(); addEventListener('resize', resize);
     const sec = $('#investors');
-    sec.addEventListener('scene:enter', () => { visible = true; drawP = 0; setTimeout(resize, 50); });
+    sec.addEventListener('scene:enter', () => { visible = true; drawP = 0; });
     sec.addEventListener('scene:leave', () => { visible = false; });
     setInterval(() => { if (visible) { data.push(data[data.length - 1] + (Math.random() - .47) * vol); data.shift(); } }, 900);
     let mouse = null;
@@ -371,7 +372,10 @@
     cv.addEventListener('pointerleave', () => { mouse = null; });
     const frame = () => {
       requestAnimationFrame(frame);
-      if (!visible || !W) return;
+      if (!visible) return;
+      const r = cv.getBoundingClientRect();
+      if (Math.round(r.width) !== Math.round(W) || Math.round(r.height) !== Math.round(H)) resize();   // same frame as the redraw
+      if (!W) return;
       drawP = Math.min(1, drawP + .02);
       const mn = Math.min(...data), mx = Math.max(...data), pad = 20;
       const X = i => i / (data.length - 1) * W, Y = v => pad + (1 - (v - mn) / (mx - mn || 1)) * (H - pad * 2);
@@ -424,12 +428,16 @@
   };
   $$('.scramble').forEach(el => { el.dataset.text = el.textContent; el.textContent = el.textContent.replace(/\S/g, ' '); });
   // every scene replays its entrance each time it becomes active
+  // (reset with transitions switched off, so a revisit replays exactly like the first visit — no half states)
   const enterScene = sc => {
     const items = $$('.reveal, .chart, .tl__item', sc);
+    sc.classList.add('resetting');
     items.forEach(el => el.classList.remove('in'));
     $$('.scramble', sc).forEach(el => { el.textContent = el.dataset.text.replace(/\S/g, ' '); });
+    sc.dispatchEvent(new CustomEvent('scene:reset'));
     void sc.offsetWidth;
-    requestAnimationFrame(() => items.forEach(el => el.classList.add('in')));
+    sc.classList.remove('resetting');
+    requestAnimationFrame(() => requestAnimationFrame(() => items.forEach(el => el.classList.add('in'))));
     $$('.scramble', sc).forEach((el, k) => setTimeout(() => scrambleTo(el, el.dataset.text, 900), 140 + k * 110));
     $$('[data-count]', sc).forEach(countUp);
   };
@@ -540,7 +548,6 @@
     nav.classList.remove('open');
     closeCmd();
     if (!instant && !REDUCED) {
-      STAGE.kick++;
       $('#warpNum').textContent = pad2(i + 1);
       $('#warpTitle').textContent = next.dataset.title.toUpperCase();
       warp.classList.remove('run', 'up', 'down'); void warp.offsetWidth;
@@ -554,16 +561,27 @@
       cur = i;
       STAGE.zone = next.dataset.zone || null;
       STAGE.p = 0; STAGE.drag = 0; holdP = 0; zoneT = 0;
+      if (!instant && !REDUCED) STAGE.kick++;      // warp blur / flash on the new 3D scene as the bars open
       hud();
       enterScene(next);
       next.dispatchEvent(new CustomEvent('scene:enter'));
       history.replaceState(null, '', '#' + next.id);
     };
     if (instant || REDUCED) { swap(); busy = false; return; }
-    setTimeout(swap, 400);                       // bars fully cover the screen here
-    setTimeout(() => { busy = false; }, 900);
+    // swap while every bar covers the screen: timed from the bars' actual animation start (a timer started
+    // here would drift whenever the browser is busy and reveal the swap in a strip)
+    let swapped = false;
+    const doSwap = () => { if (swapped) return; swapped = true; swap(); setTimeout(() => { busy = false; }, 420); };
+    warp.querySelector('i').addEventListener('animationstart', () => setTimeout(doSwap, 455), { once: true });
+    setTimeout(doSwap, 900);                      // fallback (e.g. animations throttled)
   };
   window.FEISAR_GO = go;
+
+  // decode the fleet / spec images in idle time after start-up, so entering those scenes never stalls
+  addEventListener('feisar:start', () => (window.requestIdleCallback || (f => setTimeout(f, 800)))(() => {
+    SHIPS.forEach(s => { const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = s.img; im.decode().catch(() => {}); });
+    $$('#fleetTrack img').forEach(im => im.decode().catch(() => {}));
+  }, { timeout: 4000 }));
 
   // the hero headline and copy replay their intro on every return to the launch scene
   let heroVisits = 0;

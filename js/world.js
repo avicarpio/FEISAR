@@ -249,6 +249,17 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
   shipReady = true;
   if (window.FEISAR_IGNITED) ignite();
   window.dispatchEvent(new Event('feisar:model-ready'));
+  // build and precompile the test circuit in idle time: doing it on the first jump to the track
+  // froze the main thread for ~200 ms mid-warp, so the transition bars vanished in one hard cut
+  (window.requestIdleCallback || (f => setTimeout(f, 400)))(async () => {
+    if (track) return;
+    track = buildTrack();
+    track.g.visible = true;
+    let compiled = null;
+    try { compiled = renderer.compileAsync(scene, camera); } catch { /* compile lazily instead */ }   // collects programs synchronously
+    track.g.visible = prevZone === 'track';                                                          // so it never shows on the hero
+    try { await compiled; } catch { /* ignore */ }
+  }, { timeout: 3000 });
 }, undefined, err => console.error('FEISAR model failed to load', err));
 
 // reveal scan frame
