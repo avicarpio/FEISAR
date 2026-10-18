@@ -86,7 +86,7 @@ material("fsr_metal", "#c3cad3", metal=1.0, rough=0.22)
 material("fsr_gunmetal", "#4d5560", metal=1.0, rough=0.34)
 material("fsr_steel", "#8d96a1", metal=1.0, rough=0.3)
 material("fsr_rubber", "#0c0e12", rough=0.8)
-material("fsr_glass", "#0f2c48", metal=0.2, rough=0.02, coat=1.0, alpha=0.55)
+material("fsr_glass", "#1d5f8f", metal=0.3, rough=0.02, coat=1.0, alpha=0.5)
 material("fsr_helmet", "#f2c230", rough=0.2, coat=1.0)
 material("fsr_visor", "#0a0f1a", metal=0.8, rough=0.05, coat=1.0)
 material("fsr_suit", "#1d4fa8", rough=0.6)
@@ -169,7 +169,14 @@ def box(name, c, s, mat, rot=(0, 0, 0), bevel=0.01, group=None, segments=2, basi
         v.co.x *= s[0]; v.co.y *= s[2]; v.co.z *= s[1]
     ob = finish(name, bm, [mat], bevel=bevel, group=group, segments=segments)
     if basis:
-        ax, ay, az = (B(v).normalized() for v in basis)
+        # orthonormalise around the normal (ay), keep the frame right-handed and close to the given axes
+        ax, ay, az = (V3(v).normalized() for v in basis)
+        ax = (ax - ay * ay.dot(ax)).normalized()
+        az2 = ax.cross(ay)
+        if az2.dot(az) < 0:
+            ax = -ax
+            az2 = ax.cross(ay)
+        ax, ay, az = B(ax).normalized(), B(ay).normalized(), B(az2).normalized()
         # local Blender axes: X = web x, Y = -web z, Z = web y
         m = mu.Matrix((ax, -az, ay)).transposed()
         ob.matrix_world = mu.Matrix.Translation(B(c)) @ m.to_4x4()
@@ -343,6 +350,13 @@ for s in (1, -1):
         az.normalize()
         ay = az.cross(ax).normalized()
         box(f"slot_{tag}_{ua}", (c[0] - n.x * 0.004, c[1], c[2]), (0.02, hgt, (V3(pa) - V3(pb)).length), mat, basis=(ax, ay, az), bevel=0.0, group="hull")
+    # boarding ladder panel (dark recess with rungs, below the canopy)
+    pa, na = side_point(0.50, s, 0.3)
+    n = V3(na).normalized()
+    up = V3((0, 1, 0))
+    box(f"ladder_{tag}", (pa[0] + n.x * 0.002, pa[1] + 0.05, pa[2]), (0.012, 0.32, 0.12), "fsr_carbon", basis=(n, up, V3((0, 0, 1))), bevel=0.0, group="hull")
+    for k in range(5):
+        box(f"rung_{tag}_{k}", (pa[0] + n.x * 0.012, pa[1] - 0.08 + k * 0.065, pa[2]), (0.014, 0.014, 0.1), "fsr_metal", basis=(n, up, V3((0, 0, 1))), bevel=0.0, group="hull")
     # nose chin intake
 box("nose_intake", (0, 0.02, zu(0.035)), (0.22, 0.05, 0.12), "fsr_carbon", rot=(math.radians(-35), 0, 0), bevel=0.0, group="hull")
 
@@ -362,7 +376,7 @@ CAN = [  # u, base half-width, base y, top half-width, top y
 loft("canopy_glass", [canopy_ring(*c) for c in CAN], lambda i, j: 0, ["fsr_glass"], group="canopy_glass", smooth=0.35)
 for k, c in enumerate(CAN[1:], 1):
     z = zu(c[0])
-    tube(f"canopy_hoop_{k}", [(c[1] + 0.01, c[2], z), (c[3] + 0.01, c[4] + 0.01, z), (-c[3] - 0.01, c[4] + 0.01, z), (-c[1] - 0.01, c[2], z)], 0.016, "fsr_carbon", group="canopy_frame")
+    tube(f"canopy_hoop_{k}", [(c[1] + 0.01, c[2], z), (c[3] + 0.01, c[4] + 0.01, z), (-c[3] - 0.01, c[4] + 0.01, z), (-c[1] - 0.01, c[2], z)], 0.011, "fsr_carbon", group="canopy_frame")
 for sx in (1, -1):
     tube(f"canopy_rail_top_{sx}", [(sx * (c[3] + 0.012), c[4] + 0.012, zu(c[0])) for c in CAN], 0.016, "fsr_carbon", group="canopy_frame")
     tube(f"canopy_rail_base_{sx}", [(sx * (c[1] + 0.015), c[2] + 0.01, zu(c[0])) for c in CAN], 0.022, "fsr_dark", group="canopy_frame")
@@ -449,6 +463,18 @@ for sgn in (1, -1):
 
     loft(f"wing_{tag}", rings, lambda i, j: 0, ["fsr_wing", "fsr_teal"], cap_front=1, cap_back=1, uv_of=uv, group=f"wing_{tag}", smooth=0.9)
 
+    # leading-edge armour strip
+    tube(f"wing_le_{tag}", [tuple(wing_surface(s0, 0.004, 1, sgn)[0]) for s0 in [0.04 + k * 0.045 for k in range(20)]], 0.022, "fsr_gunmetal", group=f"wing_{tag}")
+    # root fillet: closes the gap between the wing underside and the hull flank
+    fil = []
+    for q in (0.02, 0.2, 0.4, 0.6, 0.8, 0.98):
+        p_root, _ = wing_surface(0.0, q, -1, sgn)
+        z = p_root.z
+        u = (ZN - z) / L
+        wb, wt, yb, yt = hull_at(min(u, U_END))
+        fil.append([tuple(p_root), (sgn * (wt + (wb - wt) * 0.55), yb + (yt - yb) * 0.74, z), (sgn * (wb + 0.02), yb + (yt - yb) * 0.42, z)])
+    loft(f"wing_fillet_{tag}", fil, lambda i, j: 0, ["fsr_teal"], closed=False, group=f"wing_{tag}", smooth=0.8)
+
     # cooling grille: recessed dark panel with slats on the inner wing (top view)
     for s0 in (0.1,):
         p_a, n_a = wing_surface(s0, 0.28, 1, sgn)
@@ -460,11 +486,15 @@ for sgn in (1, -1):
         centre = (p_a + p_b + p_c + (p_b + p_c - p_a)) / 4 + n_a * 0.005
         w = (p_c - p_a).length
         h = (p_b - p_a).length
-        box(f"grille_well_{tag}", tuple(centre), (w, 0.012, h), "fsr_carbon", basis=(ax, ay, ax.cross(ay).normalized() * -1 if False else az), bevel=0.0, group=f"grille_{tag}")
-        for k in range(11):
-            t = (k + 0.5) / 11
+        box(f"grille_well_{tag}", tuple(centre), (w, 0.012, h), "fsr_carbon", basis=(ax, ay, az), bevel=0.0, group=f"grille_{tag}")
+        for k in range(15):
+            t = (k + 0.5) / 15
             pc = p_a + (p_c - p_a) * t + (p_b - p_a) * 0.5 + n_a * 0.016
-            box(f"grille_slat_{tag}_{k}", tuple(pc), (0.016, 0.028, h * 0.92), "fsr_gunmetal", basis=(ax, ay, az), bevel=0.0, group=f"grille_{tag}")
+            box(f"grille_slat_{tag}_{k}", tuple(pc), (0.012, 0.03, h * 0.92), "fsr_gunmetal", basis=(ax, ay, az), bevel=0.0, group=f"grille_{tag}")
+        # surround frame
+        for d, (cx, cz, sx, sz) in enumerate(((0, -0.5, 1.04, 0.04), (0, 0.5, 1.04, 0.04), (-0.5, 0, 0.04, 1.0), (0.5, 0, 0.04, 1.0))):
+            q = centre + ax * (cx * w) + az * (cz * h) + n_a * 0.012
+            box(f"grille_rim_{tag}_{d}", tuple(q), (max(sx * w, 0.03), 0.02, max(sz * h, 0.03)), "fsr_gunmetal", basis=(ax, ay, az), bevel=0.004, group=f"grille_{tag}")
 
     # trailing-edge thrusters (dark blocks with glowing nozzles, seen in the top elevation)
     for k, s0 in enumerate((0.3, 0.42)):

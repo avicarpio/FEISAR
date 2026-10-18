@@ -597,7 +597,7 @@ function frame(now) {
     const e = smooth(.1, .38, P) * (1 - smooth(.86, .98, P));
     explode(e);
     WIRE_ALL.value = e * .55;
-    const az = .55 + P * 1.3 + mouse.sx * .3, el = .48 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.6 : 1);
+    const az = -.5 - P * 1.1 + mouse.sx * .3, el = .5 + mouse.sy * .1, dist = 27 * (W < 700 ? 1.6 : 1);
     camera.position.set(Math.sin(az) * Math.cos(el) * dist, Math.sin(el) * dist + .4, Math.cos(az) * Math.cos(el) * dist);
     camera.lookAt(0, .5, -.4);
     camera.fov = W < 700 ? 44 : 32;

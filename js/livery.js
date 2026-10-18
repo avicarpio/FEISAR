@@ -63,8 +63,8 @@ function paintHull() {
     const al = s.fx ? 'right' : 'left';
     text(x, 'feisar.', { cx: at(.05), cy: uc, size: 70, font: 'Michroma, sans-serif', color: C.white, flipX: s.fx, flipY: s.fy, align: al });
     text(x, 'race for e-unity', { cx: at(.06), cy: lc, size: 40, font: 'Saira, sans-serif', weight: 600, color: C.white, flipX: s.fx, flipY: s.fy, align: al, spacing: 2 });
-    text(x, 'mogoc', { cx: at(.47), cy: uc + (s.fy ? -4 : 4), size: 78, font: 'Michroma, sans-serif', color: C.ink, flipX: s.fx, flipY: s.fy, align: al });
-    text(x, 'FX350 · BOLOGNA BUILD', { cx: at(.47), cy: lc, size: 24, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, flipX: s.fx, flipY: s.fy, align: al, spacing: 3 });
+    text(x, 'mogoc', { cx: at(.535), cy: uc + (s.fy ? -4 : 4), size: 78, font: 'Michroma, sans-serif', color: C.ink, flipX: s.fx, flipY: s.fy, align: al });
+    text(x, 'FX350 · BOLOGNA BUILD', { cx: at(.535), cy: lc, size: 24, font: '"JetBrains Mono", monospace', weight: 500, color: C.ink, flipX: s.fx, flipY: s.fy, align: al, spacing: 3 });
     // panel seams + red/white hazard tabs
     x.strokeStyle = 'rgba(10,21,48,.35)'; x.lineWidth = 3;
     for (const u of [.17, .36, .44, .62, .74]) { x.beginPath(); x.moveTo(at(u), s.up[0]); x.lineTo(at(u), s.lo[1]); x.stroke(); }
@@ -102,9 +102,6 @@ function paintWing() {
   poly([T(0, 0), T(.36, 0), T(.3, .55), T(.12, 1), T(0, 1)], C.yellow);
   poly([T(.36, 0), T(.44, 0), T(.38, .55), T(.18, 1), T(.12, 1), T(.3, .55)], C.grey);
   poly([Bt(0, 0), Bt(.3, 0), Bt(.2, 1), Bt(0, 1)], C.yellow);
-  // grille surround
-  x.strokeStyle = C.yellow; x.lineWidth = 14;
-  x.strokeRect(T(.26, .08)[0], T(.26, .08)[1], T(.74, 0)[0] - T(.26, 0)[0], H * .28);
   // wingtip oval "eye"
   const [ox, oy] = T(.64, .86);
   x.save(); x.translate(ox, oy); x.scale(1, 1.25);
