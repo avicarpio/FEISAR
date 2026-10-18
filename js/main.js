@@ -526,15 +526,16 @@
   const rail = $('#rail'), warp = $('#warp'), progress = $('#progress');
   const pad2 = n => String(n).padStart(2, '0');
   const idOf = id => scenes.findIndex(s => s.id === id);
+  // every hint ends with how to move on, so scrolling behaves the same everywhere
   const HINTS = {
-    hero: ['◉', 'Hold to launch · wheel to explore'],
-    fleet: ['⇆', 'Drag or wheel through the fleet'],
-    spec: ['▤', 'Pick a craft'],
-    track: ['◉', 'Hold to boost'],
-    engineering: ['⟲', 'Drag to orbit · hold to reassemble'],
-    network: ['◎', 'Pick a headquarters'],
-    acquire: ['↵', 'Transmit your request'],
-    credits: ['↑', 'Back to launch with Home'],
+    hero: ['↓', 'Scroll or hold to launch'],
+    fleet: ['⇆', 'Scroll through the fleet'],
+    spec: ['↓', 'Pick a craft · scroll to continue'],
+    track: ['◉', 'Hold to boost · scroll to continue'],
+    engineering: ['⟲', 'Drag · hold · scroll to continue'],
+    network: ['↓', 'Pick an HQ · scroll to continue'],
+    acquire: ['↓', 'Scroll for credits'],
+    credits: ['↑', 'Scroll up · Home to launch'],
   };
   // giant ghost index behind every content scene (parallax layer)
   scenes.forEach((sc, i) => {
@@ -555,7 +556,7 @@
     $('#scNum').textContent = pad2(cur + 1);
     $('#scArc').style.strokeDashoffset = 163.4 * (1 - (cur + 1) / N);
     progress.style.transform = `scaleX(${(cur + 1) / N})`;
-    const [k, txt] = HINTS[sc.id] || ['↓', 'Wheel, swipe or ↓ to continue'];
+    const [k, txt] = HINTS[sc.id] || ['↓', 'Scroll to continue'];
     $('#hintKey').textContent = k;
     scrambleTo($('#hintTxt'), txt.toUpperCase(), 600);
     links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + sc.id));
@@ -582,9 +583,10 @@
       if (prev) { prev.classList.remove('is-active', 'leave-up', 'leave-down'); prev.dispatchEvent(new CustomEvent('scene:leave')); }
       next.scrollTop = 0;
       next.classList.add('is-active');
+      fitScene(next);
       cur = i;
       STAGE.zone = next.dataset.zone || null;
-      STAGE.p = 0; STAGE.drag = 0; holdP = 0; zoneT = 0;
+      STAGE.p = 0; STAGE.drag = 0; holdP = 0; scrubP = 0; pull = 0; zoneT = 0;
       if (!instant && !REDUCED) STAGE.kick++;      // warp blur / flash on the new 3D scene as the bars open
       hud();
       enterScene(next);
@@ -600,6 +602,26 @@
     setTimeout(doSwap, 900);                      // fallback (e.g. animations throttled)
   };
   window.FEISAR_GO = go;
+
+  // desktop: every content scene fits exactly one screen (scaled down with CSS zoom when needed), so the
+  // wheel never scrolls inside a scene first — scrolling always means "pull to the next scene"
+  const fitScene = sc => {
+    if (!sc || sc.dataset.zone || sc.id === 'fleet') return;
+    const box = sc.querySelector(':scope > .wrap') || sc.querySelector(':scope > .footer__grid');
+    const targets = [...sc.children].filter(c => !c.classList.contains('scene__ghost'));
+    targets.forEach(t => { t.style.zoom = ''; });
+    if (innerWidth <= 900 || !box) return;
+    sc.classList.add('measuring');                // entrance animation off while measuring (it offsets the content)
+    for (let k = 0; k < 3; k++) {
+      const over = sc.scrollHeight - sc.clientHeight;
+      if (over <= 0) break;
+      const z = parseFloat(targets[0].style.zoom || 1);
+      const nz = Math.max(.56, z * (1 - (over + 8) / sc.scrollHeight));
+      targets.forEach(t => { t.style.zoom = nz.toFixed(3); });
+    }
+    sc.classList.remove('measuring');
+  };
+  addEventListener('resize', () => fitScene(scenes[cur]));
 
   // decode the fleet / spec images in idle time after start-up, so entering those scenes never stalls
   addEventListener('feisar:start', () => (window.requestIdleCallback || (f => setTimeout(f, 800)))(() => {
@@ -636,7 +658,7 @@
   // does the active scene (or the element under the pointer) still have room to scroll that way?
   const canScroll = (el, dy) => {
     for (let n = el; n && n !== document.body; n = n.parentElement) {
-      if (n.scrollHeight > n.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) {
+      if (n.scrollHeight > n.clientHeight + 6 && /(auto|scroll)/.test(getComputedStyle(n).overflowY)) {
         if (dy > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 2 : n.scrollTop > 2) return true;
       }
       if (n.classList.contains('scene')) break;
@@ -650,7 +672,8 @@
   let fx = 0, fxT = 0, fxV = 0;
   const fleetMax = () => Math.max(0, fleetTrack.scrollWidth - innerWidth + 80);
 
-  let wheelAcc = 0, wheelT = 0;
+  const PULL = 360;                    // wheel distance (px) needed to change scene
+  let pull = 0, lastWheel = 0, scrubP = 0;
   addEventListener('wheel', e => {
     if (!started || $('#cmd').classList.contains('open')) return;
     const sc = scenes[cur], dy = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
@@ -661,12 +684,14 @@
     if (canScroll(e.target, dy)) return;
     e.preventDefault();
     const now = performance.now();
-    if (now - wheelT > 260) wheelAcc = 0;
-    wheelT = now;
     // one gesture = one jump: while a wheel / trackpad-inertia stream keeps arriving the lock stays on
-    if (now < lockUntil || busy) { lockUntil = Math.max(lockUntil, now + 400); wheelAcc = 0; return; }
-    wheelAcc += dy;
-    if (Math.abs(wheelAcc) > 55) { go(cur + Math.sign(wheelAcc)); wheelAcc = 0; lockUntil = now + 950; }
+    if (now < lockUntil || busy) { lockUntil = Math.max(lockUntil, now + 400); return; }
+    lastWheel = now;
+    // launch scene: the wheel scrubs the opening cinematic (camera, captions, ignition) instead of leaving it
+    if (sc.id === 'hero' && !(dy < 0 && scrubP <= 0) && scrubP < .84) { scrubP = clamp(scrubP + dy / 1500, 0, .84); return; }
+    // every other scene: "pull to advance" — the wheel fills a meter; only a full meter changes scene
+    pull = clamp(pull + dy / PULL, -1, 1);
+    if (Math.abs(pull) >= 1) { const d = Math.sign(pull); pull = 0; lockUntil = now + 950; go(cur + d); }
   }, { passive: false });
 
   let ty0 = null, tx0 = 0;
@@ -749,6 +774,7 @@
   let pmx = 0, pmy = 0;
   addEventListener('pointermove', e => { pmx = e.clientX / innerWidth - .5; pmy = e.clientY / innerHeight - .5; });
 
+  const hintMeter = $('#hintMeter');
   const holdRing = $('#holdRing'), holdTxt = $('#holdTxt'), launchpad = $('#launchpad');
   let prevT = performance.now(), hx = innerWidth / 2, hy = innerHeight / 2, rpx = 0, rpy = 0;
   addEventListener('pointermove', e => { hx = e.clientX; hy = e.clientY; });
@@ -769,14 +795,19 @@
 
     // interactive 3D scenes
     let ringOn = false, ringP = 0, ringLabel = '';
+    if (performance.now() - lastWheel > 180) { pull *= Math.pow(.004, dt); if (Math.abs(pull) < .003) pull = 0; }   // springs back
+    let meter = Math.abs(pull);
     if (sc.id === 'hero') {
       if (holding) holdP += dt * .26;
       else if (holdP < .84) holdP = Math.max(0, holdP - dt * .5);
       else holdP += dt * .5;                                       // committed: the craft launches
-      if (holdP >= 1) { holdP = 1; go('track'); }
-      STAGE.p = holdP; STAGE.boost = holding ? 1 : 0;
+      if (scrubP >= .84 && performance.now() - lastWheel > 120) scrubP = Math.min(1, scrubP + dt * .5);   // scrolled to the end: launch
+      const hp = Math.max(holdP, scrubP);
+      if (hp >= 1) { holdP = scrubP = 1; go('track'); }
+      STAGE.p = hp; STAGE.boost = holding ? 1 : 0;
       ringOn = holding || (holdP > .01 && holdP < .84); ringP = Math.min(1, holdP / .84); ringLabel = holdP >= .84 ? 'Launch' : 'Hold';
-      launchpad.style.opacity = 1 - Math.min(1, holdP * 8);
+      launchpad.style.opacity = 1 - Math.min(1, hp * 8);
+      meter = Math.min(1, hp / .84);
     } else if (sc.id === 'track') {
       STAGE.p = (zoneT * .085) % 1;
       STAGE.boost = lerp(STAGE.boost, holding ? 1 : 0, 1 - Math.pow(.05, dt));
@@ -787,6 +818,9 @@
       if (!dragX) STAGE.drag *= Math.pow(.6, dt);
       ringOn = holding; ringP = 1 - (STAGE.p - .04) / .56; ringLabel = 'Assemble';
     }
+    root.style.setProperty('--pull', pull.toFixed(3));
+    hintMeter.style.transform = `scaleX(${meter.toFixed(3)})`;
+    document.body.classList.toggle('pulling', meter > .02);
     holdRing.classList.toggle('on', ringOn);
     if (ringOn) {
       rpx = lerp(rpx, hx, .25); rpy = lerp(rpy, hy, .25);

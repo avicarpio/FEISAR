@@ -239,11 +239,44 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
     w.renderOrder = 2; o.add(w);
   });
   // engine plumes
+  // engine exhaust: two nested additive cones per nozzle (soft sheath + white-hot core) with a shader that fades
+  // along the length and towards the silhouette, plus travelling shock bands and flicker
   const plume = (x, y, r, len) => {
-    const g = new THREE.ConeGeometry(r, len, 32, 1, true); g.translate(0, len / 2, 0);
-    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: glowColor(.4, 1.3, 2.4), transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, y, x === 0 ? -2.8 : -3.24);
-    ship.add(m); plumes.push(m);
+    const group = new THREE.Group();
+    group.rotation.x = -Math.PI / 2; group.position.set(x, y, x === 0 ? -2.8 : -3.24);
+    const layer = (rad, l, core) => {
+      const g = new THREE.CylinderGeometry(rad * .18, rad, l, 40, 24, true); g.translate(0, l / 2, 0);
+      const m = new THREE.Mesh(g, new THREE.ShaderMaterial({
+        uniforms: { uTime: TIME, uPower: { value: 0 }, uCore: { value: core }, uSeed: { value: Math.random() * 10 } },
+        vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+          void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }`,
+        fragmentShader: `uniform float uTime, uPower, uCore, uSeed; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+          void main(){
+            float along = clamp(vUv.y, 0., 1.);                    // 0 at the nozzle, 1 at the tip
+            float facing = clamp(abs(dot(normalize(vN), normalize(vV))), 0., 1.);  // 1 through the middle, 0 at the silhouette
+            float body = pow(facing, mix(1.6, 3.5, uCore)) * pow(1. - along, mix(1.4, 2.6, uCore));
+            float shock = .78 + .22 * sin(along * 46. - uTime * 38. + uSeed);
+            float flick = .9 + .1 * sin(uTime * 61. + uSeed * 3.) * sin(uTime * 23. + uSeed);
+            float a = body * shock * flick * uPower * smoothstep(0., .04, along);
+            // light theme: painted as saturated electric blue (additive light would vanish on white);
+            // the HDR core feeds the bloom pass for the glow
+            vec3 deep = vec3(.02, .22, .95), elec = vec3(.15, .62, 1.35), hot = vec3(.9, 1.5, 2.6);
+            vec3 col = mix(deep, elec, smoothstep(.0, .75, (1. - along) * facing));
+            col = mix(col, hot, uCore * pow(facing, 3.) * pow(1. - along, 2.));
+            a = clamp(a, 0., 1.);                                  // never NaN/Inf: bloom would smear it into black blocks
+            gl_FragColor = vec4(col, a);
+          }`,
+        transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+      }));
+      m.renderOrder = 3;
+      group.add(m);
+      return m;
+    };
+    const sheath = layer(r, len, 0), core = layer(r * .5, len * .62, 1);
+    // the old code drives material.opacity / scale; keep that API on the group
+    group.material = { opacity: 0 };
+    group.userData.layers = [[sheath, 1.8], [core, 3.2]];
+    ship.add(group); plumes.push(group);
   };
   plume(0, .43, .22, 2.6); plume(.92, .15, .2, 2.2); plume(-.92, .15, .2, 2.2);
   shipReady = true;
@@ -668,6 +701,7 @@ function frame(now) {
 
   key.position.copy(shipRoot.position).add(tmp.set(6, 12, 8));
   key.target.position.copy(shipRoot.position);
+  for (const pl of plumes) for (const [m, k] of pl.userData.layers) m.material.uniforms.uPower.value = pl.material.opacity * k;
   composer.render();
 }
 
