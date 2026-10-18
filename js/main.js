@@ -111,15 +111,10 @@
   /* ---------------------------------------------------------
      TEXT SCRAMBLE
      --------------------------------------------------------- */
-  // Text swaps use a soft rise-in instead of random-glyph scrambling: the scramble changed glyph widths
-  // every frame, which made the text jitter and read as flicker.
-  function scrambleTo(el, text) {
-    el.textContent = text;
-    if (REDUCED) return;
-    el.classList.remove('txt-in'); void el.offsetWidth; el.classList.add('txt-in');
-  }
-
-  // headings: one span per character (inside unbreakable word spans), revealed by a staggered rise
+  // Decode effect without jitter: every character keeps its real glyph in the layout (made invisible while
+  // decoding) and the random glyph is painted on top of that fixed slot, so the line width never changes.
+  // Glyphs tick every ~55 ms instead of every frame.
+  const GLYPHS = 'ABCDEFGHJKLMNPRSTUVXYZ0123456789#/<>+';
   const splitChars = el => {
     const words = el.textContent.split(' ');
     el.textContent = '';
@@ -131,6 +126,34 @@
       if (wi < words.length - 1) el.appendChild(document.createTextNode(' '));
     });
   };
+  function decode(el, { delay = 0, per = 26, cycles = 7 } = {}) {
+    const chs = $$('.ch', el);
+    cancelAnimationFrame(el._dec);
+    if (REDUCED) { chs.forEach(c => c.classList.remove('dec')); return; }
+    chs.forEach(c => { c.classList.add('dec'); c.dataset.g = GLYPHS[(Math.random() * GLYPHS.length) | 0]; });
+    const t0 = performance.now() + delay;
+    let lastTick = 0;
+    const step = now => {
+      const tick = now - lastTick > 55;
+      if (tick) lastTick = now;
+      let left = 0;
+      chs.forEach((c, k) => {
+        if (!c.classList.contains('dec')) return;
+        const local = now - t0 - k * per;
+        if (local > cycles * 55) { c.classList.remove('dec'); return; }
+        left++;
+        if (tick && local > -per * 2) c.dataset.g = GLYPHS[(Math.random() * GLYPHS.length) | 0];
+      });
+      if (left) el._dec = requestAnimationFrame(step);
+    };
+    el._dec = requestAnimationFrame(step);
+  }
+  // changing labels (spec name, map info, hint, form reference) decode into their new text
+  function scrambleTo(el, text) {
+    el.textContent = text;
+    splitChars(el);
+    decode(el, { per: 14, cycles: 6 });
+  }
 
   /* ---------------------------------------------------------
      FLEET CARDS
@@ -439,7 +462,7 @@
     void sc.offsetWidth;
     sc.classList.remove('resetting');
     requestAnimationFrame(() => requestAnimationFrame(() => items.forEach(el => el.classList.add('in'))));
-    requestAnimationFrame(() => requestAnimationFrame(() => $$('.scramble', sc).forEach(el => el.classList.add('in'))));
+    requestAnimationFrame(() => requestAnimationFrame(() => $$('.scramble', sc).forEach((el, k) => { el.classList.add('in'); decode(el, { delay: 120 + k * 120 }); })));
     $$('[data-count]', sc).forEach(countUp);
   };
 

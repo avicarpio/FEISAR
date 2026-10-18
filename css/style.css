@@ -268,7 +268,7 @@ section { position: relative; }
 .unity__text strong { color: var(--blue); font-weight: 600; }
 .unity__band { display: grid; grid-template-columns: 380px 1fr; gap: clamp(30px, 5vw, 80px); margin-top: clamp(60px, 8vw, 120px); align-items: stretch; }
 .unity__ring { perspective: 1000px; }
-.unity__ring-inner { position: relative; height: 100%; min-height: 380px; display: grid; place-items: center; transition: transform .3s ease-out; transform-style: preserve-3d;
+.unity__ring-inner { position: relative; height: 100%; min-height: 380px; display: grid; place-items: center; transition: transform .3s ease-out;
   background: linear-gradient(145deg, var(--blue-2), var(--blue) 50%, var(--blue-deep)); color: var(--white); overflow: hidden;
   clip-path: polygon(0 0, calc(100% - 34px) 0, 100% 34px, 100% 100%, 34px 100%, 0 calc(100% - 34px)); }
 .unity__ring-inner::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.07) 1px, transparent 1px); background-size: 28px 28px; }
@@ -306,7 +306,7 @@ section { position: relative; }
 .fleet__bgtype { position: absolute; bottom: 1vh; left: 0; white-space: nowrap; font-family: var(--f-display); font-size: 11vw; color: transparent; -webkit-text-stroke: 1px rgba(0,71,187,.08); pointer-events: none; will-change: transform; }
 
 .ship-card { flex: none; width: clamp(290px, 25vw, 400px); position: relative; perspective: 1200px; }
-.ship-card__inner { position: relative; height: 100%; background: var(--white); padding: 20px 22px 18px; transform-style: preserve-3d; transition: transform .3s ease-out, box-shadow .5s;
+.ship-card__inner { position: relative; height: 100%; background: var(--white); padding: 20px 22px 18px; transition: transform .3s ease-out, box-shadow .5s;   /* flat (no preserve-3d): keeps the images' multiply blend working while tilted */
   box-shadow: 0 20px 50px -34px rgba(10,21,48,.35);
   clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%); }
 .ship-card:hover .ship-card__inner { box-shadow: 0 30px 70px -30px rgba(0,71,187,.45); }
@@ -898,8 +898,10 @@ body.holding .launchpad { pointer-events: none; }
 @keyframes chRise { from { transform: translateY(108%); } to { transform: none; } }
 .scene.is-active .h2 { animation: none; }
 
-/* soft swap for changing labels (spec name, map info, hints, form reference) */
-.txt-in { animation: txtIn .55s var(--ease) both; }
-#hintTxt.txt-in, #specCode.txt-in, #mapInfo.txt-in { display: inline-block; }
-@keyframes txtIn { from { opacity: 0; transform: translateY(.45em); } }
+/* width-stable decode: the real glyph keeps its slot (invisible), the cycling glyph is painted over it */
+.ch.dec { position: relative; -webkit-text-fill-color: transparent; }
+.ch.dec::after { content: attr(data-g); position: absolute; left: 50%; top: 0; transform: translateX(-50%); -webkit-text-fill-color: currentColor; opacity: .75; }
+.scramble .ch.dec::after { -webkit-text-fill-color: var(--yellow-ink, var(--blue)); }
 @media (prefers-reduced-motion: reduce) { .scramble .ch { transform: none !important; } }
+
+.ship-card__art { isolation: isolate; }
