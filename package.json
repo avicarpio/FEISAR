@@ -1,9 +1,9 @@
 {
   "name": "feisar-fan-site",
   "private": true,
-  "description": "Unofficial FEISAR (Wipeout) fan site. Static: no build step, serve the repository root.",
+  "description": "Unofficial FEISAR (Wipeout) fan site. Static: `npm run build` copies the public files into dist/.",
   "scripts": {
-    "build": "echo 'Static site: nothing to build. Output directory is the repository root.'",
+    "build": "rm -rf dist && mkdir dist && cp -r index.html css js assets dist/",
     "dev": "python3 tools/serve.py 8097"
   }
 }
