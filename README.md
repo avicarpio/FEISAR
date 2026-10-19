@@ -42,6 +42,7 @@ Rebuilding `assets/models/feisar_fx350.glb` from the Sketchfab download:
 tools/blender-bwrap.sh -b --python tools/dump_uv.py -- assets/models/feisar_fx350.glb /tmp/uv.json
 python3 tools/feisar_textures.py <unzipped download> /tmp/uv.json <realesrgan-ncnn-vulkan dir> /tmp/hitex
 tools/blender-bwrap.sh -b --python tools/prepare_feisar.py -- <unzipped download>/scene.gltf /tmp/hitex
+npx @gltf-transform/cli webp assets/models/feisar_fx350.glb assets/models/feisar_fx350.glb --quality 90   # 5.3 MB -> 1.9 MB
 ```
 
 `tools/build_feisar.py` (classic-style) and `tools/build_feisar_hd.py` (HD FX350) are earlier procedural

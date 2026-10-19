@@ -91,19 +91,23 @@
       window.dispatchEvent(new Event('feisar:start'));
       setTimeout(() => boot.classList.add('gone'), 1500);
     };
+    // the bar follows the real download of the craft (the slowest asset); a minimum intro time keeps
+    // the boot readable on fast connections, and the site opens only once the craft is ready
+    let modelReady = false, modelP = 0, shownE = 0;
+    addEventListener('feisar:model-progress', e => { modelP = Math.max(modelP, e.detail); });
+    addEventListener('feisar:model-ready', () => { modelReady = true; modelP = 1; });
+    setTimeout(() => { modelReady = true; modelP = 1; }, 30000);           // failsafe: never trap the visitor
     const step = now => {
-      const p = clamp((now - t0) / dur, 0, 1), e = 1 - Math.pow(1 - p, 2.2);
-      bar.style.transform = `scaleX(${e})`;
-      pct.textContent = String(Math.round(e * 100)).padStart(3, '0') + '%';
-      const want = Math.min(lines.length, Math.floor(e * lines.length + .3));
+      const p = clamp((now - t0) / dur, 0, 1), timeE = 1 - Math.pow(1 - p, 2.2);
+      const target = REDUCED ? 1 : Math.min(timeE, .12 + .88 * modelP);
+      shownE = lerp(shownE, target, .18);
+      if (target >= 1 && shownE > .995) shownE = 1;
+      bar.style.transform = `scaleX(${shownE})`;
+      pct.textContent = String(Math.round(shownE * 100)).padStart(3, '0') + '%';
+      const want = Math.min(lines.length, Math.floor(shownE * lines.length + .3));
       while (shown < want) { const d = document.createElement('div'); d.textContent = lines[shown++]; log.appendChild(d); }
-      if (p < 1) requestAnimationFrame(step); else arm();
+      if (shownE >= 1 && (modelReady || REDUCED)) finish(); else requestAnimationFrame(step);
     };
-    // the site opens by itself as soon as the bar is full and the craft is loaded
-    let modelReady = false, barDone = false;
-    const arm = () => { barDone = true; if (modelReady || REDUCED) finish(); };
-    addEventListener('feisar:model-ready', () => { modelReady = true; if (barDone) finish(); });
-    setTimeout(() => { modelReady = true; if (barDone) finish(); }, 9000);
     requestAnimationFrame(step);
     addEventListener('keydown', e => { if (e.key === 'Escape') finish(); });
   })();

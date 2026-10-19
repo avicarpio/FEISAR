@@ -293,7 +293,11 @@ new GLTFLoader().load('assets/models/feisar_fx350.glb', async gltf => {
     track.g.visible = prevZone === 'track';                                                          // so it never shows on the hero
     try { await compiled; } catch { /* ignore */ }
   }, { timeout: 3000 });
-}, undefined, err => console.error('FEISAR model failed to load', err));
+}, xhr => {
+  // hosts that compress the GLB send no length: fall back to its known size (~1.9 MB)
+  const total = xhr.total || 1.9e6;
+  window.dispatchEvent(new CustomEvent('feisar:model-progress', { detail: Math.min(.97, xhr.loaded / total) }));
+}, err => { console.error('FEISAR model failed to load', err); window.dispatchEvent(new Event('feisar:model-ready')); });
 
 // reveal scan frame
 const scanGroup = new THREE.Group();
