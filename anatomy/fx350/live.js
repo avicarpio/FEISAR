@@ -199,7 +199,7 @@ function place() {
   const fronts = layers.filter((layer) => layer.front).sort((a, b) => a.depth - b.depth);
   const sequence = [...backs, null, ...fronts];
   const signature = sequence.map((layer) => (layer ? layer.el.dataset.piece + layer.el.dataset.side : "|")).join(",");
-  if (signature !== layerOrder) {
+  if (layers.length && signature !== layerOrder) {
     layerOrder = signature;
     const fragment = document.createDocumentFragment();
     for (const layer of sequence) fragment.appendChild(layer ? layer.el : frontSvg);
@@ -559,17 +559,14 @@ function zoomBy(factor, at, glide) {
   const k = s / view.s;
   zoomTo(s, cx - (cx - view.x) * k, cy - (cy - view.y) * k, glide);
 }
+// the wheel belongs to the figure: it zooms at the pointer; only a zoom-out at full size goes on to
+// the page (embedded, the site's next scene), so scrolling down past the figure still works
 stage.addEventListener("wheel", (event) => {
-  const zoom = event.ctrlKey || event.metaKey;
-  if (!zoom && view.s <= 1.001) return; // the page scrolls (or, embedded, the site's scenes move on)
+  const dy = event.deltaY * (event.deltaMode === 1 ? 22 : 1);
+  if (!(event.ctrlKey || event.metaKey) && view.s <= 1.001 && dy > 0) return;
   event.preventDefault();
   event.fxZoom = true;
-  if (zoom) zoomBy(Math.exp(-event.deltaY * (event.deltaMode === 1 ? 0.05 : 0.0022)), event, false);
-  else {
-    view.x -= event.deltaX;
-    view.y -= event.deltaY;
-    applyView(false);
-  }
+  zoomBy(Math.exp(-dy * 0.0022), event, false);
 }, { passive: false });
 stage.addEventListener("dblclick", (event) => {
   if (event.target.closest("button")) return;
@@ -634,7 +631,7 @@ addEventListener("resize", () => applyView(false));
 if (still.matches) touring = false;
 const narrow = matchMedia("(hover: none), (max-width: 480px)");
 const hint = root.querySelector(".fx-hint");
-const wording = () => hint && (hint.textContent = narrow.matches ? "Tap to take apart" : "Hover the craft to take it apart");
+const wording = () => hint && (hint.textContent = narrow.matches ? "Tap to take apart · pinch to zoom" : "Rest on the craft to take it apart · scroll to zoom");
 wording();
 narrow.addEventListener("change", wording);
 window.addEventListener("resize", run);

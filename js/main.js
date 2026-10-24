@@ -537,7 +537,7 @@
     spec: ['↓', 'Pick a craft · scroll to continue'],
     track: ['◉', 'Hold to boost · scroll to continue'],
     engineering: ['⟲', 'Drag · hold · scroll to continue'],
-    anatomy: ['◎', 'Rest on it to take apart · Ctrl-scroll to zoom'],
+    anatomy: ['◎', 'Scroll up on it to zoom · scroll down to continue'],
     network: ['↓', 'Pick an HQ · scroll to continue'],
     acquire: ['↓', 'Scroll for credits'],
     credits: ['↑', 'Scroll up · Home to launch'],
