@@ -70,6 +70,32 @@ export const orientedBox = (centre, axes, half, meta = {}) => ({ kind: "box", o:
 
 export const ball = (at, r, meta = {}) => ({ kind: "ball", o: at, r, ...meta });
 
+// a convex panel lofted between two rings of the same count (a hull bay): its faces as half-spaces
+export function loft(ringA, ringB, meta = {}) {
+  const pts = [...ringA, ...ringB];
+  const centre = mul3(pts.reduce((sum, p) => add3(sum, p), [0, 0, 0]), 1 / pts.length);
+  const planes = [];
+  const plane = (corners) => {
+    let n = [0, 0, 0];
+    for (let i = 0; i < corners.length; i++) {
+      const a = corners[i];
+      const b = corners[(i + 1) % corners.length];
+      n = add3(n, [(a[1] - b[1]) * (a[2] + b[2]), (a[2] - b[2]) * (a[0] + b[0]), (a[0] - b[0]) * (a[1] + b[1])]);
+    }
+    if (len3(n) < 1e-9) return;
+    n = unit3(n);
+    const mid = mul3(corners.reduce((sum, p) => add3(sum, p), [0, 0, 0]), 1 / corners.length);
+    if (dot3(n, sub3(mid, centre)) < 0) n = mul3(n, -1);
+    // the plane through the corner furthest out, so no corner of a twisted quad sits outside it
+    planes.push([n, Math.max(...corners.map((c) => dot3(n, c)))]);
+  };
+  const n = ringA.length;
+  for (let j = 0; j < n; j++) plane([ringA[j], ringA[(j + 1) % n], ringB[(j + 1) % n], ringB[j]]);
+  plane(ringA);
+  plane(ringB);
+  return { kind: "loft", pts, planes, rings: [ringA, ringB], ...meta };
+}
+
 export function tube(points, radius, meta = {}) {
   const total = pathLength(points) || 1;
   let walked = 0;
@@ -93,6 +119,7 @@ export function moved(shape, offset) {
   }
   const cut = shape.cut ? (Array.isArray(shape.cut) ? shape.cut.map((one) => moved(one, offset)) : moved(shape.cut, offset)) : undefined;
   if (shape.kind === "body" || shape.kind === "prism") return { ...shape, cut, F: { ...shape.F, o: add3(shape.F.o, offset) }, _b: undefined, _f: undefined };
+  if (shape.kind === "loft") return { ...shape, cut, pts: shape.pts.map((p) => add3(p, offset)), rings: shape.rings.map((ring) => ring.map((p) => add3(p, offset))), planes: shape.planes.map(([n, d]) => [n, d + dot3(n, offset)]), _b: undefined };
   if (shape.kind === "tube") return { ...shape, cut, points: shape.points.map((p) => add3(p, offset)), tips: shape.tips && shape.tips.map((tip) => tip && add3(tip, offset)), _b: undefined };
   return { ...shape, cut, o: add3(shape.o, offset), _b: undefined };
 }
@@ -201,6 +228,11 @@ function baseSdf(shape, p) {
     const along = Math.max(shape.s0 - s, s - shape.s1);
     return Math.hypot(Math.max(flat, 0), Math.max(along, 0)) + Math.min(Math.max(flat, along), 0);
   }
+  if (shape.kind === "loft") {
+    let d = -BIG;
+    for (const [n, off] of shape.planes) d = Math.max(d, dot3(n, p) - off);
+    return d;
+  }
   if (shape.kind === "box") {
     const q = sub3(p, shape.o);
     const d = shape.axes.map((axis, index) => Math.abs(dot3(q, axis)) - shape.half[index]);
@@ -245,6 +277,9 @@ export function boundsOf(shape) {
         const p = add3(add3(F.o, mul3(F.a, s)), add3(mul3(F.u, x), mul3(F.v, y)));
         for (let i = 0; i < 3; i++) (min[i] = Math.min(min[i], p[i])), (max[i] = Math.max(max[i], p[i]));
       }
+  } else if (shape.kind === "loft") {
+    min = [0, 1, 2].map((i) => Math.min(...shape.pts.map((p) => p[i])));
+    max = [0, 1, 2].map((i) => Math.max(...shape.pts.map((p) => p[i])));
   } else if (shape.kind === "box") {
     const extent = [0, 1, 2].map((i) => shape.axes.reduce((sum, axis, j) => sum + Math.abs(axis[i]) * shape.half[j], 0));
     min = shape.o.map((v, i) => v - extent[i]);
@@ -1042,6 +1077,24 @@ function surfaceOf(shape, spacing = 0.6) {
             points.push(add3(shape.o, add3(add3(mul3(shape.axes[0], c[0]), mul3(shape.axes[1], c[1])), mul3(shape.axes[2], c[2]))));
           }
       }
+  } else if (shape.kind === "loft") {
+    const [A0, B0] = shape.rings;
+    const n = A0.length;
+    for (let j = 0; j < n; j++) {
+      const a0 = A0[j], a1 = A0[(j + 1) % n], b0 = B0[j], b1 = B0[(j + 1) % n];
+      const rows = Math.max(1, Math.ceil(len3(sub3(b0, a0)) / spacing));
+      const cols = Math.max(1, Math.ceil(len3(sub3(a1, a0)) / spacing));
+      for (let r = 0; r <= rows; r++) for (let c = 0; c < cols; c++) {
+        const t = r / rows, u = c / cols;
+        const lo = add3(mul3(a0, 1 - u), mul3(a1, u));
+        const hi = add3(mul3(b0, 1 - u), mul3(b1, u));
+        points.push(add3(mul3(lo, 1 - t), mul3(hi, t)));
+      }
+    }
+    for (const ring of [A0, B0]) {
+      const c = mul3(ring.reduce((sum, p) => add3(sum, p), [0, 0, 0]), 1 / n);
+      for (const p of ring) for (let t = spacing; t < len3(sub3(p, c)); t += spacing) points.push(add3(c, mul3(unit3(sub3(p, c)), t)));
+    }
   } else if (shape.kind === "prism") {
     const { F, poly, s0, s1 } = shape;
     const at = (s, x, y) => add3(add3(F.o, mul3(F.a, s)), add3(mul3(F.u, x), mul3(F.v, y)));

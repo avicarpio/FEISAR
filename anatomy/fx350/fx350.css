@@ -355,12 +355,7 @@
 }
 
 .fx-void {
-  fill: var(--anatomy-shade-0);
-  stroke: none;
-}
-
-.fx-void {
-  fill: var(--anatomy-shade-0);
+  fill: #18202b;
   stroke: none;
 }
 .fx-craft { will-change: transform; }
@@ -392,3 +387,21 @@ body.fx-embed .iso-caption { display: none; }
 body.fx-embed .iso-legend { padding: 6px 2px 0; margin: 0; }
 body.fx-embed .fx-parts { margin: 0; gap: 4px; justify-content: center; }
 body.fx-embed .fx-part { padding: 3px 8px; font-size: 10.5px; }
+
+/* ---- the FEISAR livery on kit panels: each paint in the kit's five light bands */
+.fx-panel [data-paint] { stroke-width: 0.35; stroke-linejoin: round; }
+.fx-panel [data-paint="blue"]   { --p0: #0f3f66; --p1: #175b8f; --p2: #2172b0; --p3: #2f8bc9; --p4: #4aa3dc; }
+.fx-panel [data-paint="yellow"] { --p0: #8a6a00; --p1: #b88d00; --p2: #d9a900; --p3: #efc21a; --p4: #fbd54a; }
+.fx-panel [data-paint="white"]  { --p0: #9aa3ad; --p1: #c3cad1; --p2: #dde2e7; --p3: #eef1f4; --p4: #fbfcfd; }
+.fx-panel [data-paint="pale"]   { --p0: #7fa4b0; --p1: #a6c9d3; --p2: #c4e2ea; --p3: #d9f0f5; --p4: #ebf9fc; }
+.fx-panel [data-paint="dark"]   { --p0: #121519; --p1: #1d2228; --p2: #2a3038; --p3: #363d47; --p4: #454d58; }
+.fx-panel [data-paint="red"]    { --p0: #6e1414; --p1: #951c1c; --p2: #b82626; --p3: #d23434; --p4: #e45050; }
+.fx-panel [data-paint][data-shade="0"] { fill: var(--p0); stroke: var(--p0); }
+.fx-panel [data-paint][data-shade="1"] { fill: var(--p1); stroke: var(--p1); }
+.fx-panel [data-paint][data-shade="2"] { fill: var(--p2); stroke: var(--p2); }
+.fx-panel [data-paint][data-shade="3"] { fill: var(--p3); stroke: var(--p3); }
+.fx-panel [data-paint][data-shade="4"] { fill: var(--p4); stroke: var(--p4); }
+.fx-panel [data-paint="glass"] { fill: #3c6f93; stroke: none; }
+.fx-panel [data-paint="glass"][data-shade="4"], .fx-panel [data-paint="glass"][data-shade="3"] { fill: #6d9cbd; }
+.fx-glass > .iso-fill { fill: #3c6f93; }
+.fx-glass { opacity: 0.86; }

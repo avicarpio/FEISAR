@@ -1,42 +1,47 @@
 # FEISAR FX350 — anatomy parts list
 
-The craft is the site's own model, `assets/models/feisar_fx350.glb` (Nobby76, CC BY 4.0, FEISAR livery),
-read triangle for triangle by `mesh.mjs` and drawn with its real texture (`build.mjs`, affine UV map per
-face). Nothing outside the shell is invented: every system below sits inside a cavity probed from the mesh,
-so the assembled figure is exactly the 3D model, and taking it apart ghosts the upper hull to show them.
+The craft is built from kit parts, panel by panel. Its lines come from the site's own model,
+`assets/models/feisar_fx350.glb` (Nobby76, CC BY 4.0, FEISAR livery): stations cut through the GLB
+(`shell.mjs`) give the section of each component, and consecutive sections bound one convex panel bay
+(`panel()` in `build.mjs`). Each panel face takes the paint of the model's texture under it, snapped to
+the FEISAR palette (blue, yellow, white, pale, dark, red). Every number on the page comes from `model.mjs`.
 
 World units: 1 u = 2 cm. x along the craft (nose +x), y across (starboard +y), z up.
-Every number on the page comes from `model.mjs` (Inductrack-style lift F = 4·F0·(I/Inom)²·e^(−2kh)).
+`node build.mjs --audit` proves the geometry (`kit/audit.mjs`, extended with a convex `loft` solid).
 
 ## Stand — Västerås AG test bed (stand)
-- deck slab, groove, corner screws
-- federal track lattice: 40 Halbach tiles (the passive half of the lift, pitch λ = 2.4 m)
-- two guard curbs with ruler ticks, label plate "FX350 · BAY 4"
-- two docking cradles cut to the real belly height (craft rests with emitter faces 1.04 m over the lattice)
+- deck slab, groove, corner screws, label plate "FX350 · BAY 4"
+- federal track lattice: 40 Halbach tiles, each engraved with its magnetisation
+- two guard curbs with lattice-pitch rulers
+- two docking cradles: base, post, saddle, rubber pad (emitter faces 1.04 m over the lattice)
 
-## Mesh assemblies (the real model, split by GLB node)
-- keel: hull + glow strips — the upper hull fades to a phantom when apart
-- nose: nose cone · canopy: glass + frame · cell: cockpit tub
-- podL / podR: the two side pods (port lifts, starboard drops and swings out)
-- nacelle: the rear engine shell
+## Airframe
+- keel pan (keel): the flat belly, one bay per station, seams and rivets
+- frames (keel): two, aft and ahead of the pilot cell: posts, web with lightening holes, cross beam
+- emitter brackets (keel): one per emitter, on the pan's edge or the nacelle wall
+- side panels (podL, podR): from the spine root to the skid edge, 27 bays a side
+  - round Syrus intake with bezel, fan and hub on each side
+  - airbrake flap on each trailing edge, with its hinge rod
+- dorsal spine covers (spine): over the rear bay and the forward bay, hollow
+- canopy (canopy): Torino glass on the cockpit walls, a bow at every station
+- nose cone (nose): hollow upper shell, blunt tip, pitot probe
+- engine nacelle (nacelle): hollow housing between the side panels at the tail
 
-## Internals (in the probed cavities)
-- keel deck plates under each bay
-- **Field capacitor bank — Brussels (power)**, rear spine x −150: 4 superconducting cells × 4.65 kWh = 18.6 kWh,
-  rack, two straps, bus bars, terminal posts
-- **Tru-Fly™ stability core (core)**, x −92: plinth, uprights, outer gimbal ring, pivots, inner ring,
-  ribbed 42 kg flywheel (42,000 rpm, L = 2,993 N·m·s), drive motor
-- **Armacall VII avionics — Warsaw (avionics)**, forward bay x 40: chassis, vents, heat-sink fins, 4 connectors
-- **Nose sensors (sensors)**: lidar on its mount, forward trim emitter, ballast rails and ballast
-- **AG field emitters ×4 — Delft (emitters)** under the pods at x −182 / −124, y ±48: coil, terminal disc;
-  faces follow the real belly
-- **Syrus plasma ramjet — Toulouse (thrust)** in the closed spine: mount, ribbed compressor, p-¹¹B chamber,
-  magnetic nozzle, two field coils (78 kN, exhaust 9.6 km/s)
-- **Plumbing and harness (plumbing)**: heat exchanger with two coolant legs from the chamber; one power cable
-  per cell to its emitter in two lanes; three data cables from the Armacall connectors aft along the floor
+## Systems
+- **Field capacitor bank — Brussels (power):** 4 cells × 4.65 kWh on a rack, straps, terminal posts,
+  bus bars, and the harness: one cable per cell to its emitter, under the side panel
+- **Tru-Fly™ core (core):** plinth, uprights, segmented outer and inner gimbal rings with their pivots,
+  ribbed 42 kg flywheel (42,000 rpm), drive motor, axle
+- **Armacall VII avionics — Warsaw (avionics):** chassis, vents, heat-sink fins, 4 connectors
+- **Pilot cell — Lisbon (cell):** seat on rails, seat back with harness, headrest, side consoles with
+  switches, control column and yoke, binnacle with three displays, pedals
+- **Nose sensors — Gothenburg (sensors):** lidar on its mount, trim emitter, ballast on two rails
+- **AG field emitters ×4 — Delft (emitters):** ribbed coil housings and terminals at the belly
+- **Syrus plasma ramjet — Toulouse (thrust):** mount, ribbed compressor, p-¹¹B chamber, magnetic nozzle,
+  two segmented field coils, tailpipe and exit lip
+- **Plumbing (plumbing):** heat exchanger, two coolant legs on saddle bosses, three data cables from
+  the Armacall to the core, the bank and the pilot cell
 
 ## Live layer (WebGL, `live.js`)
-- one field column per emitter (and the trim emitter) from its face to the lattice, banded and scrolling,
-  plus the light it lays on the tiles — scaled by emitter current
-- the Syrus plume leaving the nacelle along −x, scaled by throttle
-- light theme solves each colour for its ink over the paper; dark theme adds light
+- one field column per emitter (and the trim emitter) down to the lattice, and the light they lay on it
+- the Syrus plume leaving the exit lip, scaled by throttle
