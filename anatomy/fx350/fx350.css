@@ -405,3 +405,19 @@ body.fx-embed .fx-part { padding: 3px 8px; font-size: 10.5px; }
 .fx-panel [data-paint="glass"][data-shade="4"], .fx-panel [data-paint="glass"][data-shade="3"] { fill: #6d9cbd; }
 .fx-glass > .iso-fill { fill: #3c6f93; }
 .fx-glass { opacity: 0.86; }
+
+/* ---- zoom: the drawing scales inside the stage; the stage clips it */
+.fx-stage { overflow: hidden; }
+.fx-zoom { position: relative; transform-origin: 0 0; will-change: transform; }
+.fx-zoom > svg, .fx-zoom > canvas { display: block; width: 100%; height: auto; }
+.fx-zoom.fx-glide { transition: transform 320ms var(--anatomy-ease); }
+.fx-stage[data-zoomed] { cursor: grab; touch-action: none; }
+.fx-stage[data-panning] { cursor: grabbing; }
+.fx-stage > .fx-zoombar { position: absolute; right: 10px; top: 10px; left: auto; display: flex; width: auto; gap: 4px; z-index: 5; }
+.fx-zoombar button {
+  font: 500 12px/1 var(--anatomy-mono, ui-monospace, monospace);
+  min-width: 30px; height: 28px; padding: 0 8px; border-radius: 14px;
+  border: 1px solid var(--anatomy-line, rgba(0,0,0,.18)); background: var(--anatomy-paper, #fbfbfa); color: var(--anatomy-ink, #222);
+  cursor: pointer; opacity: .82;
+}
+.fx-zoombar button:hover, .fx-zoombar button:focus-visible { opacity: 1; }

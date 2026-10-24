@@ -5,6 +5,7 @@ if (EMBED) {
   document.body.classList.add("fx-embed");
   addEventListener("wheel", (event) => {
     event.preventDefault();
+    if (event.fxZoom) return;
     parent.postMessage({ type: "fx-wheel", dy: Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX }, "*");
   }, { passive: false });
 }
@@ -226,8 +227,8 @@ function setField(on) {
 
 const TOUR_STEP = 1.5;
 function tourAt(time) {
-  const apartFrom = 0.4;
-  const listFrom = apartFrom + 0.9;
+  const apartFrom = 1.6;
+  const listFrom = apartFrom + STAGGER.length * SPRING.stagger + 0.9;
   const listTo = listFrom + D.order.length * TOUR_STEP;
   const engage = listTo + 1.4;
   if (time < apartFrom) return { apart: false, part: null, field: false };
@@ -300,19 +301,36 @@ function pieceAt(event) {
   return item ? item.dataset.piece : null;
 }
 
+// the craft comes apart only once the pointer has rested on it: a pass over it changes nothing
+const INTENT = 700;
+let intentTimer = 0;
+let lastPoint = null;
 stage.addEventListener("pointermove", (event) => {
-  if (event.pointerType === "touch") return;
+  if (event.pointerType === "touch" || pan) return;
   inside = true;
+  lastPoint = { clientX: event.clientX, clientY: event.clientY };
   clearTimeout(leaveTimer);
   quietTour();
   if (field.on) return;
-  setApart(true);
+  if (!apart) {
+    if (!intentTimer)
+      intentTimer = setTimeout(() => {
+        intentTimer = 0;
+        if (!inside || field.on) return;
+        setApart(true);
+        if (lastPoint) select(pieceAt(lastPoint));
+        run();
+      }, INTENT);
+    return;
+  }
   select(pieceAt(event));
   run();
 });
 
 stage.addEventListener("pointerleave", () => {
   inside = false;
+  clearTimeout(intentTimer);
+  intentTimer = 0;
   clearTimeout(leaveTimer);
   leaveTimer = setTimeout(() => {
     if (inside) return;
@@ -321,8 +339,8 @@ stage.addEventListener("pointerleave", () => {
   }, 260);
 });
 
-stage.addEventListener("pointerdown", (event) => {
-  if (event.pointerType !== "touch" || field.on) return;
+stage.addEventListener("pointerup", (event) => {
+  if (event.pointerType !== "touch" || field.on || moved || pinch || touches.size > 1) return;
   quietTour();
   const id = pieceAt(event);
   if (!id || id === "stand") {
@@ -389,6 +407,18 @@ stage.addEventListener("keydown", (event) => {
     select(null);
     setApart(false);
     setField(!field.on);
+    return;
+  } else if (event.key === "+" || event.key === "=") {
+    event.preventDefault();
+    zoomBy(1.6, null, true);
+    return;
+  } else if (event.key === "-" || event.key === "_") {
+    event.preventDefault();
+    zoomBy(1 / 1.6, null, true);
+    return;
+  } else if (event.key === "0") {
+    event.preventDefault();
+    zoomTo(1, 0, 0, true);
     return;
   } else if (event.key === " ") {
     event.preventDefault();
@@ -493,6 +523,113 @@ window.FX_FRAME = ({ field: f }) => {
   fieldShown = true;
   fieldLayer.draw({ uField: Math.min(1, level), uThrust: thrust, uRise: liftNow() }, still.matches ? 0.8 : clock);
 };
+
+// ---------------------------------------------------------------- zoom and pan, to see the parts up close
+// the drawing is vector, so it stays sharp: pinch or Ctrl/⌘-scroll zooms at the pointer, double-click
+// doubles, the buttons and + - 0 step; when zoomed, drag or scroll pans and the stage keeps the gestures
+const zoomBox = stage.querySelector(".fx-zoom");
+const ZOOM_MAX = 6;
+const view = { s: 1, x: 0, y: 0 };
+let pan = null;
+let moved = false;
+const touches = new Map();
+let pinch = null;
+function applyView(glide = false) {
+  const w = stage.clientWidth;
+  const h = stage.clientHeight;
+  view.s = clamp(view.s, 1, ZOOM_MAX);
+  view.x = clamp(view.x, w * (1 - view.s), 0);
+  view.y = clamp(view.y, h * (1 - view.s), 0);
+  zoomBox.classList.toggle("fx-glide", glide && !still.matches);
+  zoomBox.style.transform = view.s > 1.001 ? `translate(${view.x.toFixed(1)}px, ${view.y.toFixed(1)}px) scale(${view.s.toFixed(4)})` : "";
+  if (view.s > 1.001) stage.setAttribute("data-zoomed", "");
+  else stage.removeAttribute("data-zoomed");
+}
+function zoomTo(s, x, y, glide) {
+  view.s = s;
+  view.x = x;
+  view.y = y;
+  applyView(glide);
+}
+function zoomBy(factor, at, glide) {
+  const r = stage.getBoundingClientRect();
+  const cx = at ? at.clientX - r.left : r.width / 2;
+  const cy = at ? at.clientY - r.top : r.height / 2;
+  const s = clamp(view.s * factor, 1, ZOOM_MAX);
+  const k = s / view.s;
+  zoomTo(s, cx - (cx - view.x) * k, cy - (cy - view.y) * k, glide);
+}
+stage.addEventListener("wheel", (event) => {
+  const zoom = event.ctrlKey || event.metaKey;
+  if (!zoom && view.s <= 1.001) return; // the page scrolls (or, embedded, the site's scenes move on)
+  event.preventDefault();
+  event.fxZoom = true;
+  if (zoom) zoomBy(Math.exp(-event.deltaY * (event.deltaMode === 1 ? 0.05 : 0.0022)), event, false);
+  else {
+    view.x -= event.deltaX;
+    view.y -= event.deltaY;
+    applyView(false);
+  }
+}, { passive: false });
+stage.addEventListener("dblclick", (event) => {
+  if (event.target.closest("button")) return;
+  event.preventDefault();
+  if (view.s >= ZOOM_MAX - 0.01) zoomTo(1, 0, 0, true);
+  else zoomBy(2, event, true);
+});
+stage.addEventListener("pointerdown", (event) => {
+  if (event.target.closest("button")) return;
+  moved = false;
+  if (event.pointerType === "touch") {
+    touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (touches.size === 2) {
+      const [a, b] = [...touches.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), s: view.s };
+      pan = null;
+      return;
+    }
+  }
+  if (view.s <= 1.001 || (event.pointerType === "mouse" && event.button !== 0)) return;
+  pan = { id: event.pointerId, x: event.clientX, y: event.clientY, vx: view.x, vy: view.y };
+  stage.setPointerCapture(event.pointerId);
+});
+stage.addEventListener("pointermove", (event) => {
+  if (touches.has(event.pointerId)) touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  if (pinch && touches.size === 2) {
+    const [a, b] = [...touches.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    moved = true;
+    zoomBy((pinch.s * (d / pinch.d)) / view.s, { clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 }, false);
+    return;
+  }
+  if (!pan || pan.id !== event.pointerId) return;
+  const dx = event.clientX - pan.x;
+  const dy = event.clientY - pan.y;
+  if (!moved && Math.hypot(dx, dy) < 4) return;
+  moved = true;
+  stage.setAttribute("data-panning", "");
+  view.x = pan.vx + dx;
+  view.y = pan.vy + dy;
+  applyView(false);
+});
+const endPointer = (event) => {
+  touches.delete(event.pointerId);
+  if (touches.size < 2) pinch = null;
+  if (pan && pan.id === event.pointerId) {
+    pan = null;
+    stage.removeAttribute("data-panning");
+  }
+};
+stage.addEventListener("pointerup", endPointer);
+stage.addEventListener("pointercancel", endPointer);
+root.querySelectorAll("[data-zoom]").forEach((button) =>
+  button.addEventListener("click", () => {
+    const kind = button.dataset.zoom;
+    if (kind === "reset") zoomTo(1, 0, 0, true);
+    else zoomBy(kind === "in" ? 1.6 : 1 / 1.6, null, true);
+  }),
+);
+addEventListener("resize", () => applyView(false));
 
 if (still.matches) touring = false;
 const narrow = matchMedia("(hover: none), (max-width: 480px)");
