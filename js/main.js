@@ -537,6 +537,7 @@
     spec: ['↓', 'Pick a craft · scroll to continue'],
     track: ['◉', 'Hold to boost · scroll to continue'],
     engineering: ['⟲', 'Drag · hold · scroll to continue'],
+    anatomy: ['◎', 'Hover to take apart · scroll to continue'],
     network: ['↓', 'Pick an HQ · scroll to continue'],
     acquire: ['↓', 'Scroll for credits'],
     credits: ['↑', 'Scroll up · Home to launch'],
@@ -698,6 +699,16 @@
     pull = clamp(pull + dy / PULL, -1, 1);
     if (Math.abs(pull) >= 1) { const d = Math.sign(pull); pull = 0; lockUntil = now + 950; go(cur + d); }
   }, { passive: false });
+
+  // the anatomy figure lives in an iframe: it forwards its wheel here so scrolling still moves on
+  addEventListener('message', e => {
+    if (!e.data || e.data.type !== 'fx-wheel' || !started || busy) return;
+    const now = performance.now();
+    if (now < lockUntil) { lockUntil = Math.max(lockUntil, now + 400); return; }
+    lastWheel = now;
+    pull = clamp(pull + e.data.dy / PULL, -1, 1);
+    if (Math.abs(pull) >= 1) { const d = Math.sign(pull); pull = 0; lockUntil = now + 950; go(cur + d); }
+  });
 
   let ty0 = null, tx0 = 0;
   addEventListener('touchstart', e => { ty0 = e.touches[0].clientY; tx0 = e.touches[0].clientX; }, { passive: true });

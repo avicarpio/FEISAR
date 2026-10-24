@@ -919,3 +919,18 @@ body[data-scene="statement"] .hint__meter, body[data-scene="credits"] .hint__met
   .scene.spec .spec__desc, .scene.spec .spec__pilots { display: none; }
   .scene.spec .spec__tech dt, .scene.spec .spec__tech dd { padding-top: 6px; padding-bottom: 6px; }
 }
+
+/* anatomy scene: the isometric cutaway in an iframe */
+.scene.anatomy { background: var(--paper); }
+.anatomy__wrap { display: grid; grid-template-columns: minmax(250px, 0.3fr) 1fr; gap: clamp(20px, 3vw, 44px); align-items: center; }
+.scene.anatomy .h2 { font-size: min(clamp(26px, 3.1vw, 50px), 6.4vh); }
+.anatomy__text p { color: var(--ink-2); font-size: 15.5px; }
+.anatomy__facts { margin: 22px 0 0; display: grid; gap: 0; border-top: 1px solid var(--line); }
+.anatomy__facts div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.anatomy__facts dt { font-family: var(--f-mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+.anatomy__facts dd { margin: 0; font-family: var(--f-display); font-size: 12px; color: var(--blue); white-space: nowrap; }
+.anatomy__fig iframe { display: block; width: 100%; height: min(76vh, 760px); border: 0; background: transparent; color-scheme: light; }
+@media (max-width: 900px) {
+  .anatomy__wrap { grid-template-columns: 1fr; }
+  .anatomy__fig iframe { height: 72vh; }
+}
